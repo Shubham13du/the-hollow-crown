@@ -1,0 +1,960 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The Hollow Crown - Knight Sprite Generator (Full Set)</title>
+<style>
+  :root{
+    --out:#0E0D10; --panel:#17161B; --edge:#3B3A42; --ash:#6E6D74; --pale:#A09FA4;
+    --burg:#5E1424; --wine:#862235; --gold:#B8923F; --pgold:#D9BC73;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;padding:24px;background:var(--out);color:var(--pale);font:14px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif}
+  h1{font:600 22px/1.2 Georgia,serif;color:var(--gold);margin:0 0 4px;letter-spacing:.04em}
+  h2{font:600 14px/1.2 Georgia,serif;color:var(--pgold);margin:0 0 12px;letter-spacing:.08em;text-transform:uppercase}
+  p{margin:0 0 10px}
+  p.sub{margin:0 0 20px;color:var(--ash)}
+  section{background:var(--panel);border:1px solid var(--edge);border-radius:6px;padding:16px;margin-bottom:16px}
+  .row{display:flex;flex-wrap:wrap;gap:16px;align-items:flex-start}
+  .controls{display:flex;flex-wrap:wrap;gap:12px;align-items:center;margin:0 0 12px}
+  .controls label{display:flex;gap:6px;align-items:center;color:var(--pale)}
+  .checker{
+    background-color:#26252b;
+    background-image:linear-gradient(45deg,#1d1c21 25%,transparent 25%,transparent 75%,#1d1c21 75%),
+                     linear-gradient(45deg,#1d1c21 25%,transparent 25%,transparent 75%,#1d1c21 75%);
+    background-size:16px 16px;background-position:0 0,8px 8px;
+  }
+  canvas{display:block;image-rendering:pixelated}
+  button,select{
+    font:inherit;color:var(--pgold);background:var(--burg);border:1px solid var(--gold);
+    border-radius:4px;padding:6px 12px;cursor:pointer
+  }
+  button:hover{background:var(--wine)}
+  select{background:var(--out)}
+  input[type=range]{accent-color:var(--gold)}
+  .swatches{display:flex;flex-wrap:wrap;gap:8px}
+  .sw{width:92px;font-size:11px;color:var(--pale)}
+  .sw i{display:block;height:28px;border:1px solid var(--edge);margin-bottom:3px}
+  #sheetScroll{overflow:auto;max-width:100%}
+  #sheetWrap{position:relative;display:inline-block}
+  #gridOverlay{position:absolute;inset:0;pointer-events:none}
+  pre{margin:12px 0 0;padding:10px;background:var(--out);border:1px solid var(--edge);border-radius:4px;
+      color:var(--pale);font:12px/1.5 ui-monospace,Menlo,Consolas,monospace;overflow:auto}
+  code{color:var(--pgold)}
+  #game{width:100%;max-width:960px;height:auto;background:var(--out);border:1px solid var(--edge)}
+  .note{color:var(--ash);font-size:13px}
+</style>
+</head>
+<body>
+
+<h1>The Hollow Crown &middot; Knight Sprite Generator</h1>
+<p class="sub">Final set: 7 animations, 38 frames. Standalone tool, separate from your game files.</p>
+
+<section>
+  <h2>Locked palette (12 colours)</h2>
+  <div class="swatches" id="palette"></div>
+</section>
+
+<section>
+  <h2>Base pose (idle frame 0)</h2>
+  <div class="controls">
+    <label><input type="checkbox" id="guides" checked> Show guides (baseline y = 60, anchor x = 28)</label>
+    <button id="dlBase">Download base pose PNG (64 x 64)</button>
+  </div>
+  <div class="checker" style="display:inline-block"><canvas id="base" width="512" height="512"></canvas></div>
+  <p class="note" style="margin-top:8px">Shown at 8x. Guides are preview-only and are never exported.</p>
+</section>
+
+<section>
+  <h2>Sprite sheet (512 x 448, transparent)</h2>
+  <div class="controls">
+    <label>Zoom
+      <select id="zoom">
+        <option value="1">1x</option>
+        <option value="2" selected>2x</option>
+      </select>
+    </label>
+    <label><input type="checkbox" id="grid" checked> Show 64 px cell grid</label>
+    <button id="dlSheet">Download sprite sheet PNG</button>
+  </div>
+  <div id="sheetScroll">
+    <div id="sheetWrap" class="checker">
+      <canvas id="sheet" width="512" height="448"></canvas>
+      <div id="gridOverlay"></div>
+    </div>
+  </div>
+  <p class="note" style="margin-top:8px">
+    Rows: 0 Idle (6), 1 Walk (8), 2 Run (8), 3 Jump (4), 4 Fall (3), 5 Attack (6), 6 Damage (3). Unused cells in a row are transparent.
+    Source rectangle for any frame: <code>sourceX = frameIndex * 64</code>, <code>sourceY = animationRow * 64</code>, size 64 x 64.
+  </p>
+  <pre id="report"></pre>
+</section>
+
+<section>
+  <h2>Animation preview at game scale (960 x 540)</h2>
+  <div class="controls">
+    <label>Animation
+      <select id="anim">
+        <option value="idle" selected>Idle (row 0, 6 frames)</option>
+        <option value="walk">Walk (row 1, 8 frames)</option>
+        <option value="run">Run (row 2, 8 frames)</option>
+        <option value="jump">Jump (row 3, 4 frames)</option>
+        <option value="fall">Fall (row 4, 3 frames)</option>
+        <option value="attack">Attack (row 5, 6 frames)</option>
+        <option value="damage">Damage (row 6, 3 frames)</option>
+      </select>
+    </label>
+    <button id="play">Pause</button>
+    <label><input type="checkbox" id="loop"> Loop</label>
+    <button id="prev">&larr; Frame</button>
+    <button id="next">Frame &rarr;</button>
+    <label>Speed <input type="range" id="fps" min="2" max="14" value="8"> <span id="fpsLabel">8 fps</span></label>
+    <label>Draw scale
+      <select id="scale">
+        <option value="1">1x (knight 48 px tall)</option>
+        <option value="1.25" selected>1.25x (knight 60 px tall)</option>
+        <option value="1.5">1.5x (knight 72 px tall)</option>
+        <option value="2">2x (knight 96 px tall)</option>
+      </select>
+    </label>
+  </div>
+  <canvas id="game" width="960" height="540"></canvas>
+  <p class="note" style="margin-top:8px">
+    Dashed gold box = your current player, 32 x 60. The sprite is placed by its feet (frame y = 60) and anchor (frame x = 28),
+    not by the frame corner. <span id="frameLabel"></span>
+  </p>
+</section>
+
+<script>
+(function(){
+'use strict';
+
+// ==== GENERATOR START ====
+const FRAME = 64;
+
+// Index 0 = transparent. Indices 1-12 = the locked palette.
+const HEX = [null,
+  '#0E0D10', // 1  outline / deepest shadow
+  '#25242A', // 2  armour shadow
+  '#3B3A42', // 3  armour base
+  '#6E6D74', // 4  armour mid / highlight
+  '#A09FA4', // 5  armour rim light
+  '#3A0F18', // 6  cape shadow
+  '#5E1424', // 7  cape base
+  '#862235', // 8  cape highlight
+  '#7A5C2A', // 9  gold shadow
+  '#B8923F', // 10 gold
+  '#D9BC73', // 11 gold highlight
+  '#E8E2D4'  // 12 damage flash (unused in idle)
+];
+const C = {OUT:1, AS:2, AB:3, AM:4, AR:5, CS:6, CB:7, CH:8, GS:9, G:10, GH:11, BONE:12};
+
+function makePainter(buf){
+  const set = (x, y, c) => {
+    if (x < 0 || y < 0 || x >= FRAME || y >= FRAME) return;
+    buf[y * FRAME + x] = c;
+  };
+  const rect = (x, y, w, h, c) => {
+    for (let j = 0; j < h; j++) for (let i = 0; i < w; i++) set(x + i, y + j, c);
+  };
+  // Shaded box. Light from upper left: top + left edges = hi, bottom + right edges = sh.
+  const box = (x, y, w, h, base, hi, sh, o) => {
+    o = o || {};
+    const outline = o.outline !== false, chamfer = !!o.chamfer;
+    if (outline) {
+      for (let j = -1; j <= h; j++) for (let i = -1; i <= w; i++) {
+        const corner = (i < 0 || i === w) && (j < 0 || j === h);
+        if (chamfer && corner) continue;
+        set(x + i, y + j, C.OUT);
+      }
+    }
+    rect(x, y, w, h, base);
+    for (let j = 0; j < h; j++) set(x, y + j, hi);
+    for (let i = 0; i < w; i++) set(x + i, y, hi);
+    for (let j = 1; j < h; j++) set(x + w - 1, y + j, sh);
+    for (let i = 1; i < w; i++) set(x + i, y + h - 1, sh);
+  };
+  return {set, rect, box};
+}
+
+function drawCape(P, idx, by){
+  const set = P.set;
+  const top = 30 + by;
+  const ph = (idx / 6) * Math.PI * 2;                 // loops perfectly over 6 frames
+  const backEdge = t => 15 - Math.floor(t * 0.45)
+                          - Math.round(Math.sin(ph - t * 0.2) * 1.6 * Math.min(1, t / 12));
+  const jag = [0, 2, 0, 3, 1, 2];                     // torn hem
+  const hem = [];
+  for (let x = 0; x <= 22; x++) {
+    hem[x] = 51 + by + jag[x % 6] + Math.round(Math.sin(ph + x * 0.9) * 0.8);
+  }
+  for (let y = top; y <= 58; y++) {
+    const t = y - top, x0 = backEdge(t);
+    for (let x = x0; x <= 22; x++) {
+      if (y > hem[x]) continue;
+      const d = x - x0;
+      let c = C.CB;
+      if (x >= 20) c = C.CS;                          // shadow beside the body
+      else if (d === 0) c = C.CH;                     // moonlit back edge
+      else if (t > 3 && d % 3 === 2) c = C.CS;        // fold shadows
+      if (y === hem[x]) c = C.CS;
+      set(x, y, c);
+    }
+  }
+}
+
+function drawKnight(buf, pose){
+  const by = pose.by;                                 // breathing offset for head/torso/arms
+  const P = makePainter(buf), set = P.set, rect = P.rect, box = P.box;
+
+  // --- cape (behind everything) ---
+  drawCape(P, pose.idx, by);
+
+  // --- far (left) arm, hangs behind the body ---
+  box(18, 34 + by, 4, 9, C.AS, C.AB, C.OUT);
+  box(18, 43 + by, 4, 4, C.AB, C.AM, C.AS);
+
+  // --- back leg (weight on this foot) ---
+  box(21, 44, 5, 12, C.AS, C.AB, C.OUT);
+  box(21, 49, 5, 2, C.AB, C.AM, C.AS, {outline:false});
+  box(19, 56, 8, 3, C.AS, C.AB, C.OUT);
+
+  // --- front leg ---
+  box(27, 44, 5, 12, C.AB, C.AM, C.AS);
+  box(27, 48, 6, 3, C.AM, C.AR, C.AB, {outline:false});
+  rect(27, 53, 5, 1, C.AS);
+  box(27, 56, 8, 3, C.AB, C.AM, C.AS);
+
+  // --- torso ---
+  box(21, 29 + by, 14, 13, C.AB, C.AM, C.AS);
+  rect(29, 31 + by, 1, 8, C.AM);
+  rect(30, 31 + by, 1, 8, C.AS);
+
+  // --- belt, buckle, tasset (fixed, so legs stay planted) ---
+  box(21, 40, 14, 2, C.AS, C.AB, C.OUT, {outline:false});
+  box(28, 40, 3, 2, C.G, C.GH, C.GS, {outline:false});
+  box(21, 42, 14, 4, C.AB, C.AM, C.AS, {outline:false});
+  rect(27, 43, 1, 3, C.AS);
+  rect(21, 46, 14, 1, C.OUT);
+
+  // --- gorget with gold trim ---
+  box(23, 28 + by, 10, 3, C.AB, C.AM, C.AS, {outline:false});
+  rect(23, 30 + by, 10, 1, C.G);
+  set(23, 30 + by, C.GH); set(24, 30 + by, C.GH); set(32, 30 + by, C.GS);
+
+  // --- helmet: closed great-helm, flat top ---
+  box(21, 13 + by, 15, 15, C.AB, C.AM, C.AS, {chamfer:true});
+  set(22, 13 + by, C.AR); set(23, 13 + by, C.AR); set(21, 14 + by, C.AR); set(21, 15 + by, C.AR);
+  // notched gold crown-band (broken on the back side)
+  for (let x = 21; x <= 35; x++) {
+    if (x === 24 || x === 25) continue;
+    set(x, 16 + by, C.G);
+    set(x, 17 + by, C.GS);
+  }
+  set(21, 16 + by, C.GH); set(22, 16 + by, C.GH); set(35, 16 + by, C.GS);
+  // face plate: seam, brow ridge, eye slit, breath slit
+  rect(27, 18 + by, 1, 9, C.AS);
+  rect(28, 19 + by, 7, 1, C.AM);
+  rect(28, 20 + by, 7, 1, C.OUT);
+  rect(28, 21 + by, 7, 1, C.AS);
+  rect(32, 23 + by, 1, 4, C.OUT);
+
+  // --- far pauldron (larger, left) ---
+  box(17, 29 + by, 10, 8, C.AB, C.AM, C.AS, {chamfer:true});
+  rect(18, 32 + by, 8, 1, C.AS);
+  rect(18, 29 + by, 3, 1, C.AR);
+  set(17, 30 + by, C.AR); set(17, 31 + by, C.AR);
+
+  // --- near pauldron (smaller, right, lighter) ---
+  box(26, 30 + by, 8, 6, C.AM, C.AR, C.AB, {chamfer:true});
+  rect(27, 33 + by, 6, 1, C.AB);
+
+  // --- near (sword) arm ---
+  box(28, 36 + by, 4, 4, C.AM, C.AR, C.AB);
+  box(31, 38 + by, 5, 4, C.AM, C.AR, C.AB);
+
+  // --- sword: point lowered ---
+  box(36, 37 + by, 2, 2, C.AM, C.AR, C.AB, {outline:false});       // pommel
+  rect(36, 39 + by, 2, 1, C.CB); set(37, 39 + by, C.CS);             // grip above hand
+  rect(36, 43 + by, 2, 2, C.CB); set(37, 43 + by, C.CS); set(37, 44 + by, C.CS); // grip below hand
+  box(35, 40 + by, 4, 3, C.AB, C.AM, C.AS, {outline:false});         // gauntlet
+  box(33, 45 + by, 8, 2, C.G, C.GH, C.GS, {outline:false});          // crossguard
+  box(36, 47 + by, 2, 9 - by, C.AM, C.AR, C.AB, {outline:false});    // blade
+  set(36, 56, C.AM); set(37, 56, C.AB); set(36, 57, C.AR);           // taper + tip
+}
+
+// 1 px near-black outline around the whole silhouette (never draws inside the sprite).
+function outlinePass(buf){
+  const out = buf.slice();
+  for (let y = 0; y < FRAME; y++) for (let x = 0; x < FRAME; x++) {
+    const i = y * FRAME + x;
+    if (buf[i] !== 0) continue;
+    const n = [
+      x > 0 ? buf[i - 1] : 0,
+      x < FRAME - 1 ? buf[i + 1] : 0,
+      y > 0 ? buf[i - FRAME] : 0,
+      y < FRAME - 1 ? buf[i + FRAME] : 0
+    ];
+    if (n.some(v => v !== 0 && v !== C.OUT)) out[i] = C.OUT;
+  }
+  buf.set(out);
+}
+
+function renderFrame(pose){
+  const buf = new Uint8Array(FRAME * FRAME);
+  drawKnight(buf, pose);
+  outlinePass(buf);
+  return buf;
+}
+
+// Idle: 6 frames. by = 1 px breathing drop of head/torso/arms, cape sways on a 6-frame loop.
+const IDLE_BY = [0, 0, 1, 1, 1, 0];
+function idlePose(i){ return {idx: i, by: IDLE_BY[i]}; }
+
+// ================= WALK (8 frames, row 1) =================
+const WALK_COUNT = 8;
+const WALK_PY = [1, 1, 0, 0, 1, 1, 0, 0];           // pelvis height per frame: contact/down = 1 px lower
+const rad = d => d * Math.PI / 180;
+
+// Thick polyline -> mask (used for articulated legs and arms).
+function limbMask(pts, w){
+  const m = new Uint8Array(FRAME * FRAME);
+  for (let s = 0; s < pts.length - 1; s++) {
+    const x0 = pts[s][0], y0 = pts[s][1], x1 = pts[s+1][0], y1 = pts[s+1][1];
+    const n = Math.max(1, Math.ceil(Math.hypot(x1 - x0, y1 - y0) * 2));
+    for (let k = 0; k <= n; k++) {
+      const sx = Math.round(x0 + (x1 - x0) * k / n - w / 2), sy = Math.round(y0 + (y1 - y0) * k / n - w / 2);
+      for (let j = 0; j < w; j++) for (let i = 0; i < w; i++) {
+        const px = sx + i, py = sy + j;
+        if (px >= 0 && py >= 0 && px < FRAME && py < FRAME) m[py * FRAME + px] = 1;
+      }
+    }
+  }
+  return m;
+}
+// Same lighting rule as box(): top/left = hi, bottom/right = sh, 1 px outline around the shape.
+function paintMask(buf, m, base, hi, sh){
+  const at = (x, y) => (x < 0 || y < 0 || x >= FRAME || y >= FRAME) ? 0 : m[y * FRAME + x];
+  for (let y = 0; y < FRAME; y++) for (let x = 0; x < FRAME; x++) {
+    if (!at(x, y) && (at(x-1, y) || at(x+1, y) || at(x, y-1) || at(x, y+1))) buf[y * FRAME + x] = C.OUT;
+  }
+  for (let y = 0; y < FRAME; y++) for (let x = 0; x < FRAME; x++) {
+    if (!at(x, y)) continue;
+    let c = base;
+    if (!at(x, y-1) || !at(x-1, y)) c = hi;
+    else if (!at(x, y+1) || !at(x+1, y)) c = sh;
+    buf[y * FRAME + x] = c;
+  }
+}
+// Two-bone IK. bend 'x': joint bends toward +x (knee). bend 'y': joint bends toward +y (elbow).
+function ik(hx, hy, tx, ty, l1, l2, bend){
+  let dx = tx - hx, dy = ty - hy, d = Math.max(0.5, Math.hypot(dx, dy));
+  const max = l1 + l2 - 0.01;
+  if (d > max) { dx *= max / d; dy *= max / d; d = max; }
+  const a = (l1*l1 - l2*l2 + d*d) / (2 * d), h = Math.sqrt(Math.max(0, l1*l1 - a*a));
+  const ux = dx / d, uy = dy / d;
+  let px = -uy, py = ux;
+  if (bend === 'x' ? px < 0 : py < 0) { px = -px; py = -py; }
+  return {k: [hx + ux*a + px*h, hy + uy*a + py*h], a: [hx + dx, hy + dy]};
+}
+// Foot path: stance (phase 0-0.5) slides back along the ground, swing (0.5-1) lifts and carries forward.
+function gait(phase){
+  const S = 5;
+  if (phase < 0.5) return {x: S - 2 * S * (phase / 0.5), lift: 0, u: -1};
+  const u = (phase - 0.5) / 0.5;
+  return {x: -S + 2 * S * u, lift: 5 * Math.sin(Math.PI * u), u: u};
+}
+function footTilt(g){ if (g.u < 0) return 0; if (g.u < 0.3) return 1; if (g.u >= 0.7) return -1; return 0; }
+
+function drawBoot(P, ax, ay, tilt, base, hi, sh){
+  const bx = Math.round(ax) - 2, y0 = Math.round(ay);
+  if (tilt === 0) P.box(bx, y0, 8, 3, base, hi, sh);
+  else if (tilt > 0) { P.box(bx, y0 - 1, 4, 3, base, hi, sh); P.box(bx + 4, y0, 4, 3, base, hi, sh); }   // toe-off: heel up
+  else { P.box(bx, y0, 4, 3, base, hi, sh); P.box(bx + 4, y0 - 1, 4, 3, base, hi, sh); }                  // reaching: toe up
+}
+
+function drawWalkCape(P, idx, py){
+  const top = 30 + py, ph = (idx / 8) * Math.PI * 2;      // loops over 8 frames
+  const backEdge = t => 16 - Math.floor(t * 0.5) - Math.round(Math.sin(ph - t * 0.25) * 2.2 * Math.min(1, t / 10));
+  const jag = [0, 2, 0, 3, 1, 2], hem = [];
+  for (let x = 0; x <= 22; x++) hem[x] = 51 + py + jag[x % 6] + Math.round(Math.sin(ph + x * 0.9) * 1.2);
+  for (let y = top; y <= 58; y++) {
+    const t = y - top, x0 = backEdge(t);
+    for (let x = x0; x <= 22; x++) {
+      if (y > hem[x]) continue;
+      const d = x - x0;
+      let c = C.CB;
+      if (x >= 20) c = C.CS;
+      else if (d === 0) c = C.CH;
+      else if (t > 3 && d % 3 === 2) c = C.CS;
+      if (y === hem[x]) c = C.CS;
+      P.set(x, y, c);
+    }
+  }
+}
+
+function drawKnightWalk(buf, pose){
+  const idx = pose.idx, py = WALK_PY[idx];
+  const hy = py + ((idx === 1 || idx === 5) ? 1 : 0);      // head dips 1 px extra after each footfall
+  const P = makePainter(buf), set = P.set, rect = P.rect, box = P.box;
+  const c = Math.cos((idx / 8) * Math.PI * 2);
+
+  drawWalkCape(P, idx, py);
+
+  // --- far (left) arm: swings WITH the near leg, opposite to its own leg ---
+  {
+    const t1 = rad(-8 + 22 * c), t2 = t1 + rad(12);
+    const s = [19.5, 35.5 + py];
+    const e = [s[0] + 4.5 * Math.sin(t1), s[1] + 4.5 * Math.cos(t1)];
+    const h = [e[0] + 5 * Math.sin(t2), e[1] + 5 * Math.cos(t2)];
+    paintMask(buf, limbMask([s, e, h], 4), C.AS, C.AB, C.OUT);
+    box(Math.round(h[0] - 2), Math.round(h[1] - 1.5), 4, 4, C.AB, C.AM, C.AS);
+  }
+
+  // --- legs: far leg first (darker), near leg in front ---
+  const hipY = 45 + py;
+  const legs = [
+    {hx: 26, ph: ((idx + 4) % 8) / 8, far: true},
+    {hx: 28, ph: idx / 8, far: false}
+  ];
+  legs.forEach(L => {
+    const g = gait(L.ph), ax = 27 + g.x, ay = 56 - g.lift;
+    const r = ik(L.hx, hipY, ax, ay - 1, 5, 6.2, 'x');
+    const col = L.far ? [C.AS, C.AB, C.OUT] : [C.AB, C.AM, C.AS];
+    paintMask(buf, limbMask([[L.hx, hipY], r.k, r.a], 5), col[0], col[1], col[2]);
+    if (L.far) box(Math.round(r.k[0]) - 2, Math.round(r.k[1]) - 1, 5, 2, C.AB, C.AM, C.AS, {outline:false});
+    else box(Math.round(r.k[0]) - 1, Math.round(r.k[1]) - 1, 5, 3, C.AM, C.AR, C.AB, {outline:false});
+    drawBoot(P, ax, ay, footTilt(g), col[0], col[1], col[2]);
+  });
+
+  // --- torso, belt, buckle, tasset (move together with the pelvis) ---
+  box(21, 29 + py, 14, 13, C.AB, C.AM, C.AS);
+  rect(29, 31 + py, 1, 8, C.AM);
+  rect(30, 31 + py, 1, 8, C.AS);
+  box(21, 40 + py, 14, 2, C.AS, C.AB, C.OUT, {outline:false});
+  box(28, 40 + py, 3, 2, C.G, C.GH, C.GS, {outline:false});
+  box(21, 42 + py, 14, 4, C.AB, C.AM, C.AS, {outline:false});
+  rect(27, 43 + py, 1, 3, C.AS);
+  rect(21, 46 + py, 14, 1, C.OUT);
+
+  // --- gorget ---
+  box(23, 28 + py, 10, 3, C.AB, C.AM, C.AS, {outline:false});
+  rect(23, 30 + py, 10, 1, C.G);
+  set(23, 30 + py, C.GH); set(24, 30 + py, C.GH); set(32, 30 + py, C.GS);
+
+  // --- helmet (identical to idle, offset by hy) ---
+  box(21, 13 + hy, 15, 15, C.AB, C.AM, C.AS, {chamfer:true});
+  set(22, 13 + hy, C.AR); set(23, 13 + hy, C.AR); set(21, 14 + hy, C.AR); set(21, 15 + hy, C.AR);
+  for (let x = 21; x <= 35; x++) {
+    if (x === 24 || x === 25) continue;
+    set(x, 16 + hy, C.G);
+    set(x, 17 + hy, C.GS);
+  }
+  set(21, 16 + hy, C.GH); set(22, 16 + hy, C.GH); set(35, 16 + hy, C.GS);
+  rect(27, 18 + hy, 1, 9, C.AS);
+  rect(28, 19 + hy, 7, 1, C.AM);
+  rect(28, 20 + hy, 7, 1, C.OUT);
+  rect(28, 21 + hy, 7, 1, C.AS);
+  rect(32, 23 + hy, 1, 4, C.OUT);
+
+  // --- pauldrons ---
+  box(17, 29 + py, 10, 8, C.AB, C.AM, C.AS, {chamfer:true});
+  rect(18, 32 + py, 8, 1, C.AS);
+  rect(18, 29 + py, 3, 1, C.AR);
+  set(17, 30 + py, C.AR); set(17, 31 + py, C.AR);
+  box(26, 30 + py, 8, 6, C.AM, C.AR, C.AB, {chamfer:true});
+  rect(27, 33 + py, 6, 1, C.AB);
+
+  // --- near (sword) arm: swings opposite to the near leg ---
+  const t1 = rad(44 - 18 * c), t2 = rad(66) + (t1 - rad(34)) * 0.6;
+  const sh = [29.5, 36.5 + py];
+  const el = [sh[0] + 3.6 * Math.sin(t1), sh[1] + 3.6 * Math.cos(t1)];
+  const hd = [el[0] + 4.9 * Math.sin(t2), el[1] + 4.9 * Math.cos(t2)];
+  paintMask(buf, limbMask([sh, el, hd], 4), C.AM, C.AR, C.AB);
+
+  // --- sword rides rigidly with the hand ---
+  const sx = Math.round(hd[0]);                                   // sword column (idle = 36)
+  const oy = Math.max(-2, Math.min(1, Math.round(hd[1] - 41.5))); // vertical offset (keeps tip above baseline)
+  rect(sx - 1, 47 + oy, 1, 11, C.OUT); rect(sx + 2, 47 + oy, 1, 11, C.OUT);        // blade edges stay readable over the boot
+  box(sx, 37 + oy, 2, 2, C.AM, C.AR, C.AB, {outline:false});                          // pommel
+  rect(sx, 39 + oy, 2, 1, C.CB); set(sx + 1, 39 + oy, C.CS);                          // grip above hand
+  rect(sx, 43 + oy, 2, 2, C.CB); set(sx + 1, 43 + oy, C.CS); set(sx + 1, 44 + oy, C.CS);
+  box(sx - 1, 40 + oy, 4, 3, C.AB, C.AM, C.AS, {outline:false});                      // gauntlet
+  box(sx - 3, 45 + oy, 8, 2, C.G, C.GH, C.GS, {outline:false});                       // crossguard
+  box(sx, 47 + oy, 2, 9, C.AM, C.AR, C.AB, {outline:false});                          // blade
+  set(sx, 56 + oy, C.AM); set(sx + 1, 56 + oy, C.AB); set(sx, 57 + oy, C.AR);        // taper + tip
+}
+
+function renderWalkFrame(i){
+  const buf = new Uint8Array(FRAME * FRAME);
+  drawKnightWalk(buf, {idx: i});
+  outlinePass(buf);
+  return buf;
+}
+
+
+// ================= SHARED POSE RENDERER (Run, Jump, Fall, Attack, Damage) =================
+// Idle and Walk above are NOT touched by anything below.
+
+// Cape as a tapered ribbon on a swinging axis. theta: 0 = hangs straight down, 90 = streams straight back,
+// >90 = billows upward. len = length, w0/w1 = width at the shoulder / at the hem, amp/ph = sway.
+function drawPoseCape(P, cp, ax, ay){
+  const th = rad(cp.theta), ux = -Math.sin(th), uy = Math.cos(th), nx = Math.cos(th), ny = Math.sin(th);
+  const jag = [0, 2, 0, 3, 1, 2];
+  for (let y = 0; y < FRAME; y++) for (let x = 0; x < FRAME; x++) {
+    if (x > ax + 1) continue;                               // never in front of the body
+    const vx = x - ax, vy = y - ay;
+    const along = vx * ux + vy * uy;
+    if (along < -1) continue;
+    const sc = Math.max(0, Math.min(1, along / cp.len));
+    const w = cp.w0 + (cp.w1 - cp.w0) * sc;
+    const q = vx * nx + vy * ny;
+    const d = q - cp.amp * Math.sin(cp.ph - sc * 3) * sc + w / 2;   // distance from the lit (upper/back) edge
+    if (d < 0 || d > w) continue;
+    const j = jag[((Math.round(q) % 6) + 6) % 6] + Math.round(Math.sin(cp.ph + q * 0.9) * 0.8);
+    const hemAt = cp.len - 1 + j;
+    if (along > hemAt) continue;
+    let c = C.CB;
+    if (d >= w - 2.5) c = C.CS;
+    else if (d < 1) c = C.CH;
+    else if (sc > 0.15 && Math.floor(d) % 3 === 2) c = C.CS;
+    if (along > hemAt - 1.2) c = C.CS;
+    P.set(x, y, c);
+  }
+}
+
+// Sword on a rotating axis from the hand centre H. alpha: 0 = point down, 90 = point forward, 180 = point up.
+function drawPoseSword(buf, H, alpha){
+  const a = rad(alpha), dx = Math.sin(a), dy = Math.cos(a), qx = Math.cos(a), qy = -Math.sin(a);
+  const px = [];                                            // [x, y, colour] in paint order
+  const side = (t, off) => [H[0] + dx * t + qx * off, H[1] + dy * t + qy * off];
+  const both = (t, cLit, cDark, w) => {
+    const A = side(t, -(w || 0.7)), B = side(t, (w || 0.7));
+    const aLit = (A[0] + A[1]) <= (B[0] + B[1]);
+    px.push([Math.round(A[0]), Math.round(A[1]), aLit ? cLit : cDark]);
+    px.push([Math.round(B[0]), Math.round(B[1]), aLit ? cDark : cLit]);
+  };
+  for (let t = -2.5; t <= 3.5; t += 0.35) both(t, C.CB, C.CS);                    // grip
+  both(-3.5, C.AR, C.AB); both(-2.9, C.AR, C.AB);                                  // pommel
+  for (let s = -3.5; s <= 3.5; s += 0.5) {                                         // crossguard
+    const A = side(4.2, s), B = side(5.0, s);
+    px.push([Math.round(A[0]), Math.round(A[1]), C.GH]);
+    px.push([Math.round(B[0]), Math.round(B[1]), C.GS]);
+  }
+  for (let t = 6; t <= 14.4; t += 0.35) both(t, C.AR, C.AB);                      // blade
+  both(15, C.AM, C.AB);                                                            // taper
+  { const T = side(16, -0.7), U = side(16, 0.7);
+    const lit = (T[0] + T[1]) <= (U[0] + U[1]) ? T : U;
+    px.push([Math.round(lit[0]), Math.round(lit[1]), C.AR]); }                     // tip
+  // dark outline around the whole sword so it stays readable over the body
+  const set = (x, y, c) => { if (x >= 0 && y >= 0 && x < FRAME && y < FRAME) buf[y * FRAME + x] = c; };
+  const occ = new Set(px.map(p => p[0] + ',' + p[1]));
+  px.forEach(p => [[1,0],[-1,0],[0,1],[0,-1]].forEach(n => {
+    if (!occ.has((p[0] + n[0]) + ',' + (p[1] + n[1]))) set(p[0] + n[0], p[1] + n[1], C.OUT);
+  }));
+  px.forEach(p => set(p[0], p[1], p[2]));
+}
+
+// Pale-ash slash trail swept by the blade between two sword angles.
+function drawSlashArc(buf, H, a0, a1, rOuter, rInner){
+  const n = Math.max(2, Math.ceil(Math.abs(a1 - a0) / 3));
+  for (let i = 0; i <= n; i++) {
+    const a = rad(a0 + (a1 - a0) * i / n), f = i / n;
+    const put = (r, c) => {
+      const x = Math.round(H[0] + r * Math.sin(a)), y = Math.round(H[1] + r * Math.cos(a));
+      if (x >= 0 && y >= 0 && x < FRAME && y < FRAME) buf[y * FRAME + x] = c;
+    };
+    if (f > 0.2 || i % 2 === 0) put(rOuter, C.AR);
+    if (f > 0.45) put(rInner, C.AM);
+  }
+}
+
+function drawKnightPose(buf, o){
+  const P = makePainter(buf), set = P.set, rect = P.rect, box = P.box;
+  const px = o.px || 0, py = o.py || 0;
+  const X = px + (o.cx || 0), Y = py + (o.cy || 0);          // chest offset
+  const HX = X + (o.hx || 0), HY = Y + (o.hy || 0);          // head offset
+
+  drawPoseCape(P, o.cape, 21 + X, 31 + Y);
+
+  // far (left) arm
+  { const s = [19.5 + X, 35.5 + Y], r = ik(s[0], s[1], o.armF[0], o.armF[1], 4.5, 5, 'y');
+    paintMask(buf, limbMask([s, r.k, r.a], 4), C.AS, C.AB, C.OUT);
+    box(Math.round(r.a[0] - 2), Math.round(r.a[1] - 1.5), 4, 4, C.AB, C.AM, C.AS); }
+
+  // legs: far first (darker), near in front. Ankles are absolute frame coordinates.
+  [{hx: 26, f: o.far, far: true}, {hx: 28, f: o.near, far: false}].forEach(L => {
+    const hipX = L.hx + px, hipY = 45 + py;
+    const r = ik(hipX, hipY, L.f.ax, L.f.ay - 1, 5, 6.2, 'x');
+    const col = L.far ? [C.AS, C.AB, C.OUT] : [C.AB, C.AM, C.AS];
+    paintMask(buf, limbMask([[hipX, hipY], r.k, r.a], 5), col[0], col[1], col[2]);
+    if (L.far) box(Math.round(r.k[0]) - 2, Math.round(r.k[1]) - 1, 5, 2, C.AB, C.AM, C.AS, {outline:false});
+    else box(Math.round(r.k[0]) - 1, Math.round(r.k[1]) - 1, 5, 3, C.AM, C.AR, C.AB, {outline:false});
+    drawBoot(P, r.a[0], L.f.ay, L.f.t || 0, col[0], col[1], col[2]);
+  });
+
+  // belt, buckle, tasset follow the pelvis
+  box(21 + px, 40 + py, 14, 2, C.AS, C.AB, C.OUT, {outline:false});
+  box(28 + px, 40 + py, 3, 2, C.G, C.GH, C.GS, {outline:false});
+  box(21 + px, 42 + py, 14, 4, C.AB, C.AM, C.AS, {outline:false});
+  rect(27 + px, 43 + py, 1, 3, C.AS);
+  rect(21 + px, 46 + py, 14, 1, C.OUT);
+
+  // torso follows the chest
+  box(21 + X, 29 + Y, 14, 13, C.AB, C.AM, C.AS);
+  rect(29 + X, 31 + Y, 1, 8, C.AM);
+  rect(30 + X, 31 + Y, 1, 8, C.AS);
+  // tasset drawn again over the torso base so the waist always reads as one piece
+  box(21 + px, 42 + py, 14, 4, C.AB, C.AM, C.AS, {outline:false});
+  rect(27 + px, 43 + py, 1, 3, C.AS);
+  rect(21 + px, 46 + py, 14, 1, C.OUT);
+  box(21 + px, 40 + py, 14, 2, C.AS, C.AB, C.OUT, {outline:false});
+  box(28 + px, 40 + py, 3, 2, C.G, C.GH, C.GS, {outline:false});
+
+  // gorget
+  box(23 + X, 28 + Y, 10, 3, C.AB, C.AM, C.AS, {outline:false});
+  rect(23 + X, 30 + Y, 10, 1, C.G);
+  set(23 + X, 30 + Y, C.GH); set(24 + X, 30 + Y, C.GH); set(32 + X, 30 + Y, C.GS);
+
+  // helmet (identical construction to Idle / Walk)
+  { const x0 = 21 + HX - 21, y0 = HY;                       // helper offsets relative to the idle helmet
+    box(21 + x0, 13 + y0, 15, 15, C.AB, C.AM, C.AS, {chamfer:true});
+    set(22 + x0, 13 + y0, C.AR); set(23 + x0, 13 + y0, C.AR); set(21 + x0, 14 + y0, C.AR); set(21 + x0, 15 + y0, C.AR);
+    for (let x = 21; x <= 35; x++) { if (x === 24 || x === 25) continue; set(x + x0, 16 + y0, C.G); set(x + x0, 17 + y0, C.GS); }
+    set(21 + x0, 16 + y0, C.GH); set(22 + x0, 16 + y0, C.GH); set(35 + x0, 16 + y0, C.GS);
+    rect(27 + x0, 18 + y0, 1, 9, C.AS);
+    rect(28 + x0, 19 + y0, 7, 1, C.AM);
+    rect(28 + x0, 20 + y0, 7, 1, C.OUT);
+    rect(28 + x0, 21 + y0, 7, 1, C.AS);
+    rect(32 + x0, 23 + y0, 1, 4, C.OUT); }
+
+  // pauldrons: larger far one at the back, smaller lighter near one
+  box(17 + X, 29 + Y, 10, 8, C.AB, C.AM, C.AS, {chamfer:true});
+  rect(18 + X, 32 + Y, 8, 1, C.AS);
+  rect(18 + X, 29 + Y, 3, 1, C.AR);
+  set(17 + X, 30 + Y, C.AR); set(17 + X, 31 + Y, C.AR);
+  box(26 + X, 30 + Y, 8, 6, C.AM, C.AR, C.AB, {chamfer:true});
+  rect(27 + X, 33 + Y, 6, 1, C.AB);
+
+  // near (sword) arm; the hand is wherever the arm actually reaches, so the sword can never detach
+  const sh = [29.5 + X, 36.5 + Y];
+  const r = ik(sh[0], sh[1], o.armN[0], o.armN[1], 3.6, 4.9, 'y');
+  paintMask(buf, limbMask([sh, r.k, r.a], 4), C.AM, C.AR, C.AB);
+  const H = r.a;
+
+  if (o.arc) drawSlashArc(buf, H, o.arc[0], o.arc[1], 16, 13);
+  drawPoseSword(buf, H, o.sword);
+  box(Math.round(H[0] - 2), Math.round(H[1] - 1), 4, 3, C.AB, C.AM, C.AS, {outline:false});   // gauntlet over the grip
+}
+
+function renderPoseFrame(o){
+  const buf = new Uint8Array(FRAME * FRAME);
+  drawKnightPose(buf, o);
+  outlinePass(buf);
+  if (o.flash) for (let i = 0; i < buf.length; i++) if (buf[i] && buf[i] !== C.OUT) buf[i] = C.BONE;   // impact flash
+  return buf;
+}
+
+const cape = (theta, len, ph, amp, w0, w1) => ({theta: theta, len: len, ph: ph, amp: amp == null ? 1.5 : amp, w0: w0 || 5, w1: w1 || 12});
+const TAU = Math.PI * 2;
+
+// ---- RUN (8 frames, loops) ----
+function runFoot(phase){
+  const S = 7, st = 0.45;
+  if (phase < st) return {x: S - 2 * S * (phase / st), lift: 0, u: -1};
+  const u = (phase - st) / (1 - st);
+  return {x: -S + 2 * S * u, lift: 7 * Math.sin(Math.PI * u), u: u};
+}
+const RUN_PY = [2, 2, 1, -1, 2, 2, 1, -1];
+const RUN_AIR = [0, 0, 0, 1, 0, 0, 0, 1];                  // push-off frames where both feet leave the ground
+function runPose(i){
+  const ph = i / 8, a = ph * TAU, c = Math.cos(a);
+  const foot = (phase, stanceFoot) => {
+    const g = runFoot(phase);
+    let lift = g.lift, t = footTilt(g);
+    if (g.u < 0 && RUN_AIR[i] && stanceFoot) { lift = 2; t = 1; }
+    return {ax: 27 + g.x, ay: 56 - lift, t: t};
+  };
+  const nearG = runFoot(ph), farG = runFoot(((i + 4) % 8) / 8);
+  return {
+    py: RUN_PY[i], cx: 1, hx: 1,
+    near: foot(ph, nearG.u < 0), far: foot(((i + 4) % 8) / 8, farG.u < 0),
+    armN: [34.5 - 4.5 * c, 39 + 2.5 * c], sword: -35 - 45 * c,
+    armF: [21 + 5 * c, 40 - 3 * c],
+    cape: cape(56 + 6 * Math.sin(a), 17, a, 1.5, 5, 11)
+  };
+}
+
+// ---- JUMP (4 frames, one-shot): anticipation, take-off, rise, apex ----
+const JUMP = [
+  {py: 3, cx: 1, hx: 1, near: {ax: 30, ay: 56, t: 0}, far: {ax: 24, ay: 56, t: 0},
+   armN: [31, 43], sword: -35, armF: [22, 41], cape: cape(4, 22, 0, 1, 6, 14)},
+  {py: -1, cx: 0, hx: 0, near: {ax: 29, ay: 55, t: 1}, far: {ax: 24, ay: 54, t: 1},
+   armN: [35, 34], sword: 60, armF: [23, 37], cape: cape(2, 24, 1, 1, 5, 12)},
+  {py: -2, cx: 0, hx: 0, near: {ax: 31, ay: 50, t: 0}, far: {ax: 25, ay: 52, t: 1},
+   armN: [36, 32], sword: 75, armF: [21, 33], cape: cape(10, 22, 2, 1.5, 5, 12)},
+  {py: -2, cx: 0, hx: 0, near: {ax: 30, ay: 48, t: 0}, far: {ax: 26, ay: 50, t: 0},
+   armN: [37, 34], sword: 95, armF: [21, 32], cape: cape(28, 21, 3, 1.5, 5, 12)}
+];
+
+// ---- FALL (3 frames, loops) ----
+const FALL = [
+  {py: 0, cx: -1, hx: 0, near: {ax: 30, ay: 53, t: 1}, far: {ax: 24, ay: 52, t: 1},
+   armN: [36, 31], sword: 150, armF: [23, 30], cape: cape(140, 18, 0, 1.5, 6, 11)},
+  {py: 0, cx: -1, hx: 0, near: {ax: 30, ay: 54, t: 1}, far: {ax: 23, ay: 52, t: 1},
+   armN: [37, 30], sword: 158, armF: [22, 31], cape: cape(150, 18, TAU / 3, 1.5, 6, 11)},
+  {py: 0, cx: -1, hx: 0, near: {ax: 29, ay: 53, t: 1}, far: {ax: 25, ay: 53, t: 1},
+   armN: [36, 32], sword: 145, armF: [23, 29], cape: cape(135, 18, 2 * TAU / 3, 1.5, 6, 11)}
+];
+
+// ---- ATTACK (6 frames, one-shot): anticipation, prepare, slash, slash, follow-through, recovery ----
+const ATTACK = [
+  {py: 2, px: -1, cx: -1, hx: 0, near: {ax: 30, ay: 56, t: 0}, far: {ax: 22, ay: 56, t: 0},
+   armN: [33, 42], sword: -28, armF: [20, 42], cape: cape(10, 22, 0, 1, 6, 14)},
+  {py: 1, px: -1, cx: -1, hx: -1, near: {ax: 31, ay: 56, t: 0}, far: {ax: 22, ay: 56, t: 0},
+   armN: [24, 32], sword: -150, armF: [19, 40], cape: cape(18, 22, 1, 1, 6, 14)},
+  {py: 2, px: 1, cx: 1, hx: 1, near: {ax: 33, ay: 56, t: 0}, far: {ax: 22, ay: 56, t: 1},
+   armN: [34, 30], sword: 150, armF: [20, 40], cape: cape(42, 22, 2, 1.5, 5, 12), arc: [212, 166]},
+  {py: 2, px: 2, cx: 1, hx: 1, near: {ax: 35, ay: 56, t: 0}, far: {ax: 21, ay: 56, t: 1},
+   armN: [37, 35], sword: 85, armF: [19, 41], cape: cape(55, 22, 3, 1.5, 5, 12), arc: [142, 100]},
+  {py: 2, px: 2, cx: 2, hx: 1, near: {ax: 35, ay: 56, t: 0}, far: {ax: 22, ay: 56, t: 1},
+   armN: [37, 40], sword: 35, armF: [19, 41], cape: cape(45, 22, 4, 1.5, 5, 12)},
+  {py: 1, px: 0, cx: 0, hx: 0, near: {ax: 30, ay: 56, t: 0}, far: {ax: 23, ay: 56, t: 0},
+   armN: [36, 41], sword: 10, armF: [19, 43], cape: cape(20, 22, 5, 1.2, 6, 13)}
+];
+
+// ---- DAMAGE (3 frames, one-shot): impact flash, recoil, recover ----
+const DAMAGE = [
+  {py: 1, px: -1, cx: -1, hx: -2, near: {ax: 31, ay: 56, t: 0}, far: {ax: 23, ay: 56, t: 0},
+   armN: [33, 35], sword: -45, armF: [20, 36], cape: cape(-10, 18, 0, 1, 6, 11), flash: true},
+  {py: 2, px: -2, cx: -1, hx: -2, near: {ax: 30, ay: 56, t: 0}, far: {ax: 22, ay: 54, t: 1},
+   armN: [27, 37], sword: -70, armF: [18, 33], cape: cape(52, 16, 1, 1.5, 5, 10)},
+  {py: 1, px: -1, cx: -1, hx: -1, near: {ax: 30, ay: 56, t: 0}, far: {ax: 23, ay: 56, t: 0},
+   armN: [34, 41], sword: -10, armF: [19, 42], cape: cape(28, 20, 2, 1.2, 6, 12)}
+];
+
+const POSE_SETS = {
+  run:    Array.from({length: 8}, (_, i) => runPose(i)),
+  jump:   JUMP,
+  fall:   FALL,
+  attack: ATTACK,
+  damage: DAMAGE
+};
+
+// ==== GENERATOR END ====
+
+
+// ---------- sheet layout ----------
+const SHEET_W = 512, SHEET_H = 448;
+const NAMES = ['Outline / deepest shadow','Armour shadow','Armour base','Armour mid','Armour rim light',
+               'Cape shadow','Cape base','Cape highlight','Gold shadow','Antique gold','Pale gold','Damage flash'];
+const RGB = HEX.map(h => h ? [1,3,5].map(i => parseInt(h.slice(i, i + 2), 16)) : null);
+
+// Each animation keeps its own frame, play state and speed.
+const ANIMS = {
+  idle:   {label: 'Idle',   row: 0, count: 6, fps: 8,  loop: true,  render: i => renderFrame(idlePose(i))},
+  walk:   {label: 'Walk',   row: 1, count: 8, fps: 10, loop: true,  render: i => renderWalkFrame(i)},
+  run:    {label: 'Run',    row: 2, count: 8, fps: 14, loop: true,  render: i => renderPoseFrame(POSE_SETS.run[i])},
+  jump:   {label: 'Jump',   row: 3, count: 4, fps: 10, loop: false, render: i => renderPoseFrame(POSE_SETS.jump[i])},
+  fall:   {label: 'Fall',   row: 4, count: 3, fps: 8,  loop: true,  render: i => renderPoseFrame(POSE_SETS.fall[i])},
+  attack: {label: 'Attack', row: 5, count: 6, fps: 14, loop: false, render: i => renderPoseFrame(POSE_SETS.attack[i])},
+  damage: {label: 'Damage', row: 6, count: 3, fps: 10, loop: false, render: i => renderPoseFrame(POSE_SETS.damage[i])}
+};
+// Approved Idle / Walk fingerprints (FNV-1a over every palette index). The report confirms they are unchanged.
+const APPROVED_HASH = {idle: 981995336, walk: 1955701138};
+function fnv(frames){
+  let h = 0x811c9dc5;
+  frames.forEach(f => { for (let k = 0; k < f.length; k++) { h ^= f[k]; h = Math.imul(h, 0x01000193) >>> 0; } });
+  return h >>> 0;
+}
+Object.keys(ANIMS).forEach(k => { const a = ANIMS[k]; a.idx = 0; a.playing = true; a.last = 0; });
+Object.keys(ANIMS).forEach(k => {
+  const a = ANIMS[k]; a.frames = [];
+  for (let i = 0; i < a.count; i++) a.frames.push(a.render(i));
+});
+let cur = 'idle';
+
+function toImageData(buf){
+  const img = new ImageData(FRAME, FRAME);
+  for (let i = 0; i < buf.length; i++) {
+    const c = buf[i];
+    if (!c) continue;                                  // alpha stays 0
+    img.data[i*4] = RGB[c][0]; img.data[i*4+1] = RGB[c][1]; img.data[i*4+2] = RGB[c][2]; img.data[i*4+3] = 255;
+  }
+  return img;
+}
+
+const $ = id => document.getElementById(id);
+const sheet = $('sheet'), sctx = sheet.getContext('2d');
+sctx.clearRect(0, 0, SHEET_W, SHEET_H);
+Object.keys(ANIMS).forEach(k => {
+  const a = ANIMS[k];
+  a.frames.forEach((b, i) => sctx.putImageData(toImageData(b), i * FRAME, a.row * FRAME));
+});
+
+// ---------- palette swatches ----------
+$('palette').innerHTML = NAMES.map((n, i) =>
+  '<div class="sw"><i style="background:' + HEX[i+1] + '"></i>' + n + '<br>' + HEX[i+1] + '</div>').join('');
+
+// ---------- report ----------
+(function(){
+  const used = new Set(), lines = [];
+  let total = 0, problems = 0;
+  Object.keys(ANIMS).forEach(k => {
+    const a = ANIMS[k];
+    a.frames.forEach((b, f) => {
+      let x0 = 64, x1 = -1, y0 = 64, y1 = -1;
+      for (let y = 0; y < 64; y++) for (let x = 0; x < 64; x++) {
+        const c = b[y*64 + x]; if (!c) continue;
+        used.add(c);
+        if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y;
+      }
+      const clip = x0 < 1 || x1 > 62 || y0 < 1 || y1 > 62;
+      if (clip) problems++;
+      total++;
+      lines.push(a.label.padEnd(6) + ' f' + f + '  sourceX ' + String(f*64).padStart(3) + '  sourceY ' + String(a.row*64).padStart(3) +
+        '  bbox x ' + String(x0).padStart(2) + '-' + x1 + ', y ' + String(y0).padStart(2) + '-' + y1 +
+        (clip ? '  CLIPPING' : (y1 === 59 ? '  on ground' : '  airborne')));
+    });
+  });
+  const okIdle = fnv(ANIMS.idle.frames) === APPROVED_HASH.idle, okWalk = fnv(ANIMS.walk.frames) === APPROVED_HASH.walk;
+  lines.push('');
+  lines.push('Frames: ' + total + ' of 38. Clipping problems: ' + problems + '. Sheet: ' + SHEET_W + ' x ' + SHEET_H + ', 64 x 64 cells, 8 columns x 7 rows.');
+  lines.push('Idle matches approved version: ' + (okIdle ? 'YES' : 'NO') + '.  Walk matches approved version: ' + (okWalk ? 'YES' : 'NO') + '.');
+  lines.push('Palette: ' + used.size + ' of 12 colours used, all from the locked palette. Pixels are fully opaque or fully transparent.');
+  $('report').textContent = lines.join('\n');
+})();
+
+// ---------- sheet view ----------
+function updateSheetView(){
+  const z = +$('zoom').value;
+  sheet.style.width = SHEET_W * z + 'px';
+  sheet.style.height = SHEET_H * z + 'px';
+  const cell = FRAME * z, ov = $('gridOverlay');
+  if ($('grid').checked) {
+    ov.style.backgroundImage =
+      'linear-gradient(to right, rgba(184,146,63,.5) 1px, transparent 1px),' +
+      'linear-gradient(to bottom, rgba(184,146,63,.5) 1px, transparent 1px)';
+    ov.style.backgroundSize = cell + 'px ' + cell + 'px';
+  } else ov.style.backgroundImage = 'none';
+}
+$('zoom').onchange = updateSheetView;
+$('grid').onchange = updateSheetView;
+updateSheetView();
+
+// ---------- base pose view (idle frame 0) ----------
+const base = $('base'), bctx = base.getContext('2d');
+function drawBase(){
+  bctx.imageSmoothingEnabled = false;
+  bctx.clearRect(0, 0, 512, 512);
+  bctx.drawImage(sheet, 0, 0, FRAME, FRAME, 0, 0, 512, 512);
+  if ($('guides').checked) {
+    bctx.lineWidth = 1;
+    bctx.strokeStyle = '#D9BC73';
+    bctx.beginPath(); bctx.moveTo(0, 480.5); bctx.lineTo(512, 480.5); bctx.stroke();      // baseline y = 60
+    bctx.strokeStyle = '#862235';
+    bctx.beginPath(); bctx.moveTo(228.5, 0); bctx.lineTo(228.5, 512); bctx.stroke();      // anchor x = 28
+    bctx.strokeStyle = 'rgba(160,159,164,.5)';
+    bctx.strokeRect(0.5, 0.5, 511, 511);
+  }
+}
+$('guides').onchange = drawBase;
+drawBase();
+
+// ---------- export ----------
+function download(canvas, name){
+  canvas.toBlob(function(blob){
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob); a.download = name;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(function(){ URL.revokeObjectURL(a.href); }, 1000);
+  }, 'image/png');
+}
+$('dlSheet').onclick = function(){ download(sheet, 'knight_spritesheet.png'); };   // contains Idle (row 0) + Walk (row 1)
+$('dlBase').onclick = function(){
+  const c = document.createElement('canvas'); c.width = c.height = FRAME;
+  c.getContext('2d').putImageData(toImageData(ANIMS.idle.frames[0]), 0, 0);
+  download(c, 'knight_base_pose.png');
+};
+
+// ---------- game-scale preview ----------
+const game = $('game'), gx = game.getContext('2d');
+const GROUND = 470, CX = 480;
+
+function drawGame(){
+  const a = ANIMS[cur], s = +$('scale').value;
+  gx.imageSmoothingEnabled = false;
+  const g = gx.createLinearGradient(0, 0, 0, 540);
+  g.addColorStop(0, '#17161B'); g.addColorStop(1, '#25242A');
+  gx.fillStyle = g; gx.fillRect(0, 0, 960, 540);
+  gx.fillStyle = '#0E0D10'; gx.fillRect(0, GROUND, 960, 540 - GROUND);
+  gx.fillStyle = '#3B3A42'; gx.fillRect(0, GROUND, 960, 2);
+
+  // sourceX = frameIndex * 64, sourceY = animationRow * 64; placed by feet (y 60) and anchor (x 28)
+  const dx = Math.round(CX - 28 * s), dy = Math.round(GROUND - 60 * s);
+  gx.drawImage(sheet, a.idx * FRAME, a.row * FRAME, FRAME, FRAME, dx, dy, FRAME * s, FRAME * s);
+
+  gx.save();
+  gx.strokeStyle = '#B8923F'; gx.setLineDash([5, 4]); gx.lineWidth = 1;
+  gx.strokeRect(CX - 16 + .5, GROUND - 60 + .5, 31, 59);
+  gx.restore();
+  gx.fillStyle = '#6E6D74'; gx.font = '12px system-ui,sans-serif';
+  gx.fillText('current player 32 x 60', CX + 24, GROUND - 66);
+
+  gx.fillStyle = '#D9BC73'; gx.font = '600 22px Georgia,serif';
+  gx.fillText(a.label.toUpperCase(), 24, 38);
+  gx.fillStyle = '#A09FA4'; gx.font = '16px system-ui,sans-serif';
+  gx.fillText('frame ' + (a.idx + 1) + ' / ' + a.count + (a.loop ? '  (loops)' : '  (plays once)') + '  -  ' + a.fps + ' fps', 24, 62);
+  $('frameLabel').textContent = a.label + ': frame ' + a.idx + ' of ' + (a.count - 1) +
+    ' (sourceX ' + a.idx * FRAME + ', sourceY ' + a.row * FRAME + ').';
+}
+
+function syncControls(){
+  const a = ANIMS[cur];
+  $('anim').value = cur;
+  $('fps').value = a.fps;
+  $('fpsLabel').textContent = a.fps + ' fps';
+  $('loop').checked = a.loop;
+  $('play').textContent = a.playing ? 'Pause' : (!a.loop && a.idx === a.count - 1 ? 'Replay' : 'Play');
+  drawGame();
+}
+$('anim').onchange = function(){ cur = this.value; syncControls(); };
+$('loop').onchange = function(){ ANIMS[cur].loop = this.checked; };
+$('scale').onchange = drawGame;
+$('fps').oninput = function(){ ANIMS[cur].fps = +this.value; $('fpsLabel').textContent = this.value + ' fps'; };
+$('play').onclick = function(){
+  const a = ANIMS[cur];
+  if (!a.playing && !a.loop && a.idx === a.count - 1) a.idx = 0;     // replay a finished one-shot
+  a.playing = !a.playing; a.last = 0; syncControls();
+};
+$('prev').onclick = function(){ const a = ANIMS[cur]; a.playing = false; a.idx = (a.idx + a.count - 1) % a.count; syncControls(); };
+$('next').onclick = function(){ const a = ANIMS[cur]; a.playing = false; a.idx = (a.idx + 1) % a.count; syncControls(); };
+
+function tick(t){
+  let dirty = false;
+  Object.keys(ANIMS).forEach(k => {                    // both animations keep running independently
+    const a = ANIMS[k];
+    if (!a.playing) return;
+    if (!a.last) a.last = t;
+    const step = 1000 / a.fps;
+    if (t - a.last >= step) {
+      let n = a.idx + Math.floor((t - a.last) / step);
+      a.last = t - ((t - a.last) % step);
+      if (n >= a.count) {
+        if (a.loop) n %= a.count;
+        else { n = a.count - 1; a.playing = false; if (k === cur) $('play').textContent = 'Replay'; }
+      }
+      a.idx = n;
+      if (k === cur) dirty = true;
+    }
+  });
+  if (dirty) drawGame();
+  requestAnimationFrame(tick);
+}
+syncControls();
+requestAnimationFrame(tick);
+})();
+</script>
+</body>
+</html>

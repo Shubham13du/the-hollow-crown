@@ -1,0 +1,435 @@
+@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;500;600;700;800&family=Marcellus&display=swap');
+
+:root {
+  --gold: #c7a66a;
+  --gold-bright: #ead39b;
+  --ink: #08090e;
+  --muted: #aaa39a;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  min-height: 100%;
+  background: #08090e;
+  color: #eee7d9;
+  font-family: Georgia, serif;
+}
+
+body { overflow-x: hidden; }
+
+.game-container {
+  width: min(100%, 1120px);
+  margin: 0 auto;
+  padding: 20px 18px 28px;
+  text-align: center;
+}
+
+.game-header h1 {
+  margin: 0;
+  font: 700 25px Cinzel, Georgia, serif;
+  letter-spacing: .22em;
+  color: #e0c58d;
+}
+
+.game-header p {
+  margin: 7px 0 15px;
+  color: #9c958c;
+  font: 11px Marcellus, Georgia, serif;
+  letter-spacing: .32em;
+}
+
+#gameCanvas {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-height: 76vh;
+  border: 1px solid rgba(199,166,106,.35);
+  background: #11131b;
+  box-shadow: 0 18px 70px rgba(0,0,0,.55);
+}
+
+#deathSnowTestButton {
+  display: none;
+  margin: 0 auto 12px;
+  padding: 9px 15px;
+  border: 1px solid #91b9c8;
+  background: #101c25;
+  color: #d7eff7;
+  font: 11px Cinzel, Georgia, serif;
+  letter-spacing: .12em;
+  cursor: pointer;
+}
+
+body.game-started #deathSnowTestButton { display: block; }
+
+.game-controls {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 8px 22px;
+  color: #a9a19a;
+  font: 10px Cinzel, Georgia, serif;
+  letter-spacing: .12em;
+}
+
+.game-controls p { margin: 13px 0 0; }
+
+/* CINEMATIC MAIN MENU */
+.main-menu {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  overflow: hidden;
+  display: grid;
+  place-items: center;
+  isolation: isolate;
+  background:
+    radial-gradient(ellipse at 72% 42%, rgba(83,91,112,.24), transparent 38%),
+    linear-gradient(112deg, #08090e 0%, #11121a 48%, #171923 100%);
+  transition: opacity .8s ease, visibility .8s ease;
+}
+
+.main-menu.menu-hidden {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.menu-atmosphere {
+  position: absolute;
+  inset: 0;
+  z-index: -5;
+  opacity: .48;
+  background-image:
+    radial-gradient(1px 1px at 12% 22%, #e9dfc8 98%, transparent),
+    radial-gradient(2px 2px at 43% 14%, #c9d4dc 98%, transparent),
+    radial-gradient(1px 1px at 77% 28%, #f0dfba 98%, transparent),
+    radial-gradient(1px 1px at 91% 61%, #d4d8e4 98%, transparent),
+    radial-gradient(2px 2px at 31% 68%, #d4d8e4 98%, transparent),
+    radial-gradient(1px 1px at 60% 79%, #f0dfba 98%, transparent);
+  background-size: 390px 300px;
+  animation: starDrift 35s linear infinite;
+}
+
+.menu-moon {
+  position: absolute;
+  z-index: -4;
+  width: clamp(130px, 19vw, 245px);
+  aspect-ratio: 1;
+  top: 10%;
+  right: 17%;
+  border-radius: 50%;
+  background: radial-gradient(circle at 38% 35%, #e0ded2, #9ca1a5 58%, #626b78 100%);
+  opacity: .52;
+  box-shadow: 0 0 65px rgba(174,190,207,.18), 0 0 170px rgba(137,160,183,.12);
+}
+
+.menu-ruins {
+  position: absolute;
+  z-index: -3;
+  bottom: -2px;
+  width: 100%;
+  height: 48%;
+  pointer-events: none;
+}
+
+.menu-ruins-back {
+  opacity: .65;
+  background:
+    linear-gradient(to top, #0b0d13 0 18%, transparent 18%),
+    linear-gradient(90deg, transparent 0 4%, #171923 4% 9%, transparent 9% 13%, #1c1e29 13% 18%, transparent 18% 29%, #171923 29% 35%, transparent 35% 69%, #1b1d28 69% 75%, transparent 75% 81%, #171923 81% 88%, transparent 88%);
+  clip-path: polygon(0 42%, 5% 42%, 5% 15%, 9% 15%, 9% 40%, 15% 40%, 15% 0, 21% 0, 21% 48%, 31% 48%, 31% 20%, 37% 20%, 37% 55%, 64% 55%, 64% 31%, 70% 31%, 70% 48%, 78% 48%, 78% 5%, 84% 5%, 84% 45%, 92% 45%, 92% 18%, 97% 18%, 97% 50%, 100% 50%, 100% 100%, 0 100%);
+}
+
+.menu-ruins-front {
+  height: 27%;
+  opacity: .9;
+  background: linear-gradient(180deg, #11131b, #07080c);
+  clip-path: polygon(0 32%, 8% 32%, 8% 10%, 14% 10%, 14% 42%, 22% 42%, 22% 18%, 28% 18%, 28% 48%, 37% 48%, 37% 30%, 46% 30%, 46% 55%, 58% 55%, 58% 23%, 64% 23%, 64% 48%, 75% 48%, 75% 12%, 82% 12%, 82% 42%, 91% 42%, 91% 20%, 97% 20%, 97% 45%, 100% 45%, 100% 100%, 0 100%);
+}
+
+.menu-vignette {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background:
+    linear-gradient(90deg, rgba(4,5,9,.38), transparent 48%, rgba(4,5,9,.12)),
+    linear-gradient(0deg, rgba(3,4,8,.75), transparent 34%, rgba(3,4,8,.18));
+  box-shadow: inset 0 0 180px rgba(0,0,0,.72);
+}
+
+.menu-content {
+  position: relative;
+  z-index: 4;
+  width: min(92vw, 680px);
+  margin: 0 30% 0 0;
+  padding: 30px 0 40px;
+  text-align: center;
+  animation: menuRise 1.15s ease both;
+}
+
+.menu-eyebrow {
+  margin-bottom: 17px;
+  color: #b49b70;
+  font: 10px Cinzel, Georgia, serif;
+  letter-spacing: .32em;
+}
+
+.menu-title {
+  margin: 0;
+  color: #ead9b5;
+  font: 600 clamp(31px, 5vw, 65px)/1.08 Cinzel, Georgia, serif;
+  letter-spacing: .095em;
+  text-shadow: 0 4px 24px rgba(0,0,0,.8), 0 0 35px rgba(205,177,126,.13);
+}
+
+.menu-divider {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 13px;
+  margin: 20px auto 16px;
+  color: #c9a96c;
+  font-size: 13px;
+}
+
+.menu-divider span {
+  display: block;
+  width: 72px;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, #b99962);
+}
+
+.menu-divider span:last-child { transform: rotate(180deg); }
+
+.menu-subtitle {
+  margin: 0;
+  color: #d4c8b2;
+  font: 500 clamp(11px, 1.5vw, 15px) Marcellus, Georgia, serif;
+  letter-spacing: .22em;
+}
+
+.menu-tagline {
+  margin: 14px 0 28px;
+  color: #aaa39a;
+  font: italic 14px Georgia, serif;
+  letter-spacing: .035em;
+}
+
+.menu-actions {
+  display: grid;
+  gap: 8px;
+  width: min(270px, 78%);
+  margin: 0 auto;
+}
+
+.menu-button {
+  position: relative;
+  min-height: 42px;
+  padding: 11px 18px;
+  border: 1px solid rgba(190,166,124,.25);
+  background: rgba(10,12,18,.54);
+  color: #c9c0b1;
+  font: 11px Cinzel, Georgia, serif;
+  letter-spacing: .2em;
+  cursor: pointer;
+  transition: .25s ease;
+}
+
+.menu-button:hover:not(:disabled) {
+  border-color: rgba(224,195,139,.85);
+  color: #f1dfb9;
+  background: rgba(130,105,67,.18);
+  transform: translateY(-1px);
+}
+
+.menu-button-primary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 17px 12px 22px;
+  border-color: rgba(219,187,126,.75);
+  background: linear-gradient(100deg, rgba(120,91,52,.5), rgba(45,39,35,.66));
+  color: #f0dfbb;
+  box-shadow: 0 0 28px rgba(175,139,82,.12), inset 0 0 18px rgba(213,180,119,.06);
+}
+
+.menu-button-primary b { font-size: 18px; font-weight: 400; }
+
+.menu-button:disabled {
+  opacity: .42;
+  cursor: not-allowed;
+}
+
+.menu-button small {
+  display: block;
+  margin-top: 3px;
+  color: #8c8274;
+  font: 8px Georgia, serif;
+  letter-spacing: .16em;
+}
+
+.menu-footnote {
+  margin: 24px 0 0;
+  color: #827b73;
+  font: 9px Cinzel, Georgia, serif;
+  letter-spacing: .2em;
+}
+
+.menu-wanderer {
+  position: absolute;
+  z-index: 2;
+  right: 10%;
+  bottom: 8%;
+  width: clamp(170px, 25vw, 330px);
+  height: clamp(280px, 53vh, 500px);
+  filter: drop-shadow(0 10px 45px rgba(0,0,0,.8));
+  pointer-events: none;
+}
+
+.wanderer-cloak {
+  position: absolute;
+  bottom: 0;
+  left: 8%;
+  width: 84%;
+  height: 79%;
+  background: linear-gradient(105deg, #080a10, #171923 48%, #08090e);
+  clip-path: polygon(35% 0, 65% 0, 77% 14%, 83% 37%, 100% 100%, 0 100%, 17% 38%, 23% 14%);
+  border-top: 1px solid rgba(157,164,179,.22);
+}
+
+.wanderer-hood {
+  position: absolute;
+  top: 9%;
+  left: 33%;
+  width: 34%;
+  height: 27%;
+  border-radius: 48% 48% 36% 36%;
+  background: linear-gradient(120deg, #20232d, #08090e 70%);
+  clip-path: polygon(50% 0, 91% 26%, 100% 100%, 0 100%, 9% 26%);
+  box-shadow: 0 0 30px rgba(115,149,174,.13);
+}
+
+.wanderer-face {
+  position: absolute;
+  top: 23%;
+  left: 42%;
+  width: 16%;
+  height: 11%;
+  border-radius: 50% 50% 42% 42%;
+  background: linear-gradient(#030407, #111724);
+  box-shadow: 0 0 14px rgba(115,174,205,.12);
+}
+
+.wanderer-sword {
+  position: absolute;
+  z-index: 1;
+  top: 22%;
+  right: 7%;
+  width: 7px;
+  height: 58%;
+  border-radius: 4px;
+  background: linear-gradient(90deg, #58616e, #d2d8dc, #4b5563);
+  transform: rotate(19deg);
+  box-shadow: 0 0 12px rgba(149,190,218,.22);
+}
+
+.wanderer-sword::after {
+  content: "";
+  position: absolute;
+  bottom: 23%;
+  left: -8px;
+  width: 23px;
+  height: 5px;
+  background: #8c744e;
+  transform: rotate(-19deg);
+}
+
+.wanderer-glow {
+  position: absolute;
+  left: 31%;
+  top: 27%;
+  width: 39%;
+  height: 18%;
+  background: radial-gradient(ellipse, rgba(107,178,218,.2), transparent 70%);
+  filter: blur(13px);
+}
+
+.menu-corner {
+  position: absolute;
+  bottom: 25px;
+  color: rgba(196,174,136,.52);
+  font: 9px Cinzel, Georgia, serif;
+  letter-spacing: .25em;
+}
+.menu-corner-left { left: 28px; }
+.menu-corner-right { right: 28px; }
+
+.menu-info-panel {
+  position: absolute;
+  z-index: 10;
+  top: 50%;
+  left: 50%;
+  width: min(390px, calc(100vw - 38px));
+  padding: 34px 30px 28px;
+  transform: translate(-50%, -50%);
+  border: 1px solid rgba(199,166,106,.55);
+  background: rgba(9,11,17,.96);
+  box-shadow: 0 20px 80px rgba(0,0,0,.75);
+  text-align: center;
+}
+.menu-info-panel[hidden] { display: none; }
+.menu-info-panel h2 {
+  margin: 0 0 15px;
+  color: #e5d1a7;
+  font: 17px Cinzel, Georgia, serif;
+  letter-spacing: .2em;
+}
+.menu-info-panel p {
+  margin: 0;
+  color: #b6afa4;
+  font: 14px/1.7 Georgia, serif;
+}
+.panel-close {
+  position: absolute;
+  top: 7px;
+  right: 12px;
+  border: 0;
+  background: transparent;
+  color: #cbb88e;
+  font-size: 25px;
+  cursor: pointer;
+}
+
+@keyframes starDrift {
+  from { transform: translateY(0); }
+  to { transform: translateY(18px); }
+}
+@keyframes menuRise {
+  from { opacity: 0; transform: translateY(18px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@media (max-width: 760px) {
+  .menu-content {
+    width: 94vw;
+    margin: 0 0 7vh;
+    padding: 20px 0;
+  }
+  .menu-wanderer {
+    right: -7%;
+    bottom: -4%;
+    opacity: .34;
+    width: 230px;
+    height: 360px;
+  }
+  .menu-moon { right: 9%; top: 8%; }
+  .menu-eyebrow { font-size: 8px; letter-spacing: .2em; }
+  .menu-tagline { font-size: 12px; }
+  .menu-actions { width: min(260px, 78%); }
+  .menu-corner { bottom: 12px; font-size: 8px; }
+  .menu-corner-left { left: 12px; }
+  .menu-corner-right { right: 12px; }
+}

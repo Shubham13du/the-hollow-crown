@@ -1,0 +1,737 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The Hollow Crown - Hollow Sentinel Sprite Generator</title>
+<style>
+  :root{
+    --out:#0E0D10; --panel:#17161B; --edge:#3B3A42; --ash:#6E6D74; --pale:#A09FA4;
+    --burg:#5E1424; --wine:#862235; --gold:#B8923F; --pgold:#D9BC73;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;padding:24px;background:var(--out);color:var(--pale);font:14px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif}
+  h1{font:600 22px/1.2 Georgia,serif;color:var(--gold);margin:0 0 4px;letter-spacing:.04em}
+  h2{font:600 14px/1.2 Georgia,serif;color:var(--pgold);margin:0 0 12px;letter-spacing:.08em;text-transform:uppercase}
+  p{margin:0 0 10px}
+  p.sub{margin:0 0 20px;color:var(--ash)}
+  section{background:var(--panel);border:1px solid var(--edge);border-radius:6px;padding:16px;margin-bottom:16px}
+  .row{display:flex;flex-wrap:wrap;gap:16px;align-items:flex-start}
+  .controls{display:flex;flex-wrap:wrap;gap:12px;align-items:center;margin:0 0 12px}
+  .controls label{display:flex;gap:6px;align-items:center;color:var(--pale)}
+  .checker{
+    background-color:#26252b;
+    background-image:linear-gradient(45deg,#1d1c21 25%,transparent 25%,transparent 75%,#1d1c21 75%),
+                     linear-gradient(45deg,#1d1c21 25%,transparent 25%,transparent 75%,#1d1c21 75%);
+    background-size:16px 16px;background-position:0 0,8px 8px;
+  }
+  canvas{display:block;image-rendering:pixelated}
+  button,select{
+    font:inherit;color:var(--pgold);background:var(--burg);border:1px solid var(--gold);
+    border-radius:4px;padding:6px 12px;cursor:pointer
+  }
+  button:hover{background:var(--wine)}
+  select{background:var(--out)}
+  input[type=range]{accent-color:var(--gold)}
+  .swatches{display:flex;flex-wrap:wrap;gap:8px}
+  .sw{width:92px;font-size:11px;color:var(--pale)}
+  .sw i{display:block;height:28px;border:1px solid var(--edge);margin-bottom:3px}
+  #sheetScroll{overflow:auto;max-width:100%}
+  #sheetWrap{position:relative;display:inline-block}
+  #gridOverlay{position:absolute;inset:0;pointer-events:none}
+  pre{margin:12px 0 0;padding:10px;background:var(--out);border:1px solid var(--edge);border-radius:4px;
+      color:var(--pale);font:12px/1.5 ui-monospace,Menlo,Consolas,monospace;overflow:auto}
+  code{color:var(--pgold)}
+  #game{width:100%;max-width:960px;height:auto;background:var(--out);border:1px solid var(--edge)}
+  .note{color:var(--ash);font-size:13px}
+  table.lay{border-collapse:collapse;margin-top:12px;font-size:13px}
+  table.lay th,table.lay td{border:1px solid var(--edge);padding:4px 10px;text-align:left}
+  table.lay th{color:var(--pgold)}
+</style>
+</head>
+<body>
+
+<h1>The Hollow Crown &middot; Hollow Sentinel Generator</h1>
+<p class="sub">First regular enemy: 5 animations, 24 frames. Standalone tool, separate from your game files and from the player's sprite sheet.</p>
+
+<section>
+  <h2>Palette (14 colours: 9 shared with the player, 5 enemy-only)</h2>
+  <div class="swatches" id="palette"></div>
+</section>
+
+<section>
+  <h2>Concept preview (idle frame 0)</h2>
+  <div class="controls">
+    <label><input type="checkbox" id="guides" checked> Show guides (baseline y = 60, anchor x = 28)</label>
+    <button id="dlBase">Download base pose PNG (64 x 64)</button>
+  </div>
+  <div class="checker" style="display:inline-block"><canvas id="base" width="512" height="512"></canvas></div>
+  <p class="note" style="margin-top:8px">Shown at 8x. Guides are preview-only and are never exported.</p>
+</section>
+
+<section>
+  <h2>Sprite sheet (384 x 320, transparent)</h2>
+  <div class="controls">
+    <label>Zoom
+      <select id="zoom"><option value="1">1x</option><option value="2" selected>2x</option></select>
+    </label>
+    <label><input type="checkbox" id="grid" checked> Show 64 px cell grid</label>
+    <button id="dlSheet">Download sprite sheet PNG</button>
+  </div>
+  <div id="sheetScroll">
+    <div id="sheetWrap" class="checker">
+      <canvas id="sheet" width="384" height="320"></canvas>
+      <div id="gridOverlay"></div>
+    </div>
+  </div>
+  <p class="note" style="margin-top:8px">
+    Source rectangle for any frame: <code>sourceX = frameIndex * 64</code>, <code>sourceY = animationRow * 64</code>, size 64 x 64.
+    Unused cells are transparent.
+  </p>
+  <table class="lay">
+    <thead><tr><th>Row</th><th>Animation</th><th>Frames</th><th>sourceY</th><th>sourceX per frame</th><th>Suggested playback</th></tr></thead>
+    <tbody id="layout"></tbody>
+  </table>
+  <pre id="report"></pre>
+</section>
+
+<section>
+  <h2>Animation preview at game scale (960 x 540)</h2>
+  <div class="controls">
+    <label>Animation
+      <select id="anim">
+        <option value="idle" selected>Idle (row 0, 4 frames)</option>
+        <option value="walk">Walk (row 1, 6 frames)</option>
+        <option value="attack">Attack (row 2, 6 frames)</option>
+        <option value="damage">Damage (row 3, 2 frames)</option>
+        <option value="death">Death (row 4, 6 frames)</option>
+      </select>
+    </label>
+    <button id="play">Pause</button>
+    <label><input type="checkbox" id="loop"> Loop</label>
+    <button id="prev">&larr; Frame</button>
+    <button id="next">Frame &rarr;</button>
+    <label>Speed <input type="range" id="fps" min="2" max="14" value="6"> <span id="fpsLabel">6 fps</span></label>
+    <label>Draw scale
+      <select id="scale">
+        <option value="1">1x (enemy 55 px tall)</option>
+        <option value="1.25" selected>1.25x (same scale as the player, enemy 69 px tall)</option>
+        <option value="1.5">1.5x</option>
+        <option value="2">2x</option>
+      </select>
+    </label>
+    <label><input type="checkbox" id="refbox" checked> Show 32 x 60 player-size box</label>
+  </div>
+  <canvas id="game" width="960" height="540"></canvas>
+  <p class="note" style="margin-top:8px">
+    Sprites are placed by their feet (frame y = 60) and anchor (frame x = 28), the same convention as the Knight-Errant.
+    The sprite faces right; mirror it in your game for left-facing, pivoting about the anchor (the anchor sits at x = 36 of the mirrored frame).
+    <span id="frameLabel"></span>
+  </p>
+</section>
+
+<script>
+(function(){
+'use strict';
+
+// ==== GENERATOR START ====
+const FRAME = 64;
+
+// Index 0 = transparent. 1-12 reuse the player's colour language; 13-14 are the enemy-only crimson glow.
+const HEX = [null,
+  '#0E0D10', // 1  outline / deepest shadow      (shared with player)
+  '#25242A', // 2  armour shadow                  (shared)
+  '#3B3A42', // 3  armour base                    (shared)
+  '#6E6D74', // 4  armour mid                     (shared)
+  '#A09FA4', // 5  armour rim light               (shared)
+  '#3A0F18', // 6  cape shadow                    (shared)
+  '#5E1424', // 7  cape base                      (shared)
+  '#862235', // 8  cape highlight / glow halo     (shared)
+  '#4B2A1C', // 9  rust shadow                    (enemy)
+  '#7A4326', // 10 rust                           (enemy)
+  '#A8683A', // 11 rust highlight                 (enemy)
+  '#E8E2D4', // 12 damage flash                   (shared)
+  '#A82C3C', // 13 crimson glow                   (enemy)
+  '#E0505E'  // 14 crimson glow, bright core      (enemy)
+];
+const C = {OUT:1, AS:2, AB:3, AM:4, AR:5, CS:6, CB:7, CH:8, RS:9, RB:10, RH:11, BONE:12, GL:13, GG:14};
+const rad = d => d * Math.PI / 180;
+const TAU = Math.PI * 2;
+
+function makePainter(buf){
+  const set = (x, y, c) => {
+    x = Math.round(x); y = Math.round(y);
+    if (x < 0 || y < 0 || x >= FRAME || y >= FRAME) return;
+    buf[y * FRAME + x] = c;
+  };
+  const rect = (x, y, w, h, c) => { for (let j = 0; j < h; j++) for (let i = 0; i < w; i++) set(x + i, y + j, c); };
+  // Light from the upper left: top + left edges = hi, bottom + right edges = sh.
+  const box = (x, y, w, h, base, hi, sh, o) => {
+    o = o || {};
+    const outline = o.outline !== false, chamfer = !!o.chamfer;
+    if (outline) {
+      for (let j = -1; j <= h; j++) for (let i = -1; i <= w; i++) {
+        const corner = (i < 0 || i === w) && (j < 0 || j === h);
+        if (chamfer && corner) continue;
+        set(x + i, y + j, C.OUT);
+      }
+    }
+    rect(x, y, w, h, base);
+    for (let j = 0; j < h; j++) set(x, y + j, hi);
+    for (let i = 0; i < w; i++) set(x + i, y, hi);
+    for (let j = 1; j < h; j++) set(x + w - 1, y + j, sh);
+    for (let i = 1; i < w; i++) set(x + i, y + h - 1, sh);
+  };
+  return {set, rect, box};
+}
+
+function limbMask(pts, w){
+  const m = new Uint8Array(FRAME * FRAME);
+  for (let s = 0; s < pts.length - 1; s++) {
+    const x0 = pts[s][0], y0 = pts[s][1], x1 = pts[s+1][0], y1 = pts[s+1][1];
+    const n = Math.max(1, Math.ceil(Math.hypot(x1 - x0, y1 - y0) * 2));
+    for (let k = 0; k <= n; k++) {
+      const sx = Math.round(x0 + (x1 - x0) * k / n - w / 2), sy = Math.round(y0 + (y1 - y0) * k / n - w / 2);
+      for (let j = 0; j < w; j++) for (let i = 0; i < w; i++) {
+        const px = sx + i, py = sy + j;
+        if (px >= 0 && py >= 0 && px < FRAME && py < FRAME) m[py * FRAME + px] = 1;
+      }
+    }
+  }
+  return m;
+}
+function paintMask(buf, m, base, hi, sh){
+  const at = (x, y) => (x < 0 || y < 0 || x >= FRAME || y >= FRAME) ? 0 : m[y * FRAME + x];
+  for (let y = 0; y < FRAME; y++) for (let x = 0; x < FRAME; x++) {
+    if (!at(x, y) && (at(x-1, y) || at(x+1, y) || at(x, y-1) || at(x, y+1))) buf[y * FRAME + x] = C.OUT;
+  }
+  for (let y = 0; y < FRAME; y++) for (let x = 0; x < FRAME; x++) {
+    if (!at(x, y)) continue;
+    let c = base;
+    if (!at(x, y-1) || !at(x-1, y)) c = hi;
+    else if (!at(x, y+1) || !at(x+1, y)) c = sh;
+    buf[y * FRAME + x] = c;
+  }
+}
+// Two-bone IK. bend 'x': joint bends toward +x (knee). bend 'y': toward +y (elbow).
+function ik(hx, hy, tx, ty, l1, l2, bend){
+  let dx = tx - hx, dy = ty - hy, d = Math.max(0.5, Math.hypot(dx, dy));
+  const max = l1 + l2 - 0.01;
+  if (d > max) { dx *= max / d; dy *= max / d; d = max; }
+  const a = (l1*l1 - l2*l2 + d*d) / (2 * d), h = Math.sqrt(Math.max(0, l1*l1 - a*a));
+  const ux = dx / d, uy = dy / d;
+  let px = -uy, py = ux;
+  if (bend === 'x' ? px < 0 : py < 0) { px = -px; py = -py; }
+  return {k: [hx + ux*a + px*h, hy + uy*a + py*h], a: [hx + dx, hy + dy]};
+}
+// 1 px near-black outline around the whole silhouette.
+function outlinePass(buf){
+  const out = buf.slice();
+  for (let y = 0; y < FRAME; y++) for (let x = 0; x < FRAME; x++) {
+    const i = y * FRAME + x;
+    if (buf[i] !== 0) continue;
+    const n = [x > 0 ? buf[i-1] : 0, x < FRAME-1 ? buf[i+1] : 0, y > 0 ? buf[i-FRAME] : 0, y < FRAME-1 ? buf[i+FRAME] : 0];
+    if (n.some(v => v !== 0 && v !== C.OUT)) out[i] = C.OUT;
+  }
+  buf.set(out);
+}
+
+// ---------------- parts (absolute coordinates, so the death heap can reuse them) ----------------
+function sTorso(P, x, y){
+  P.box(x, y, 18, 12, C.AS, C.AB, C.OUT);
+  P.rect(x + 1, y, 3, 1, C.AM); P.rect(x, y + 1, 1, 2, C.AM);
+  P.rect(x + 2, y + 6, 14, 1, C.OUT);                 // plate seam
+  P.rect(x + 9, y + 2, 1, 4, C.AB);                   // chest ridge
+  P.set(x + 3, y + 8, C.RB); P.set(x + 4, y + 9, C.RS); P.set(x + 12, y + 3, C.RB); P.set(x + 13, y + 4, C.RS); P.set(x + 7, y + 10, C.RB);
+  P.set(x + 14, y + 8, C.OUT); P.set(x + 13, y + 9, C.OUT);   // crack
+}
+function sPauldronNear(P, x, y){
+  P.box(x, y, 11, 8, C.AB, C.AM, C.AS, {chamfer: true});
+  P.rect(x + 1, y + 3, 9, 1, C.AS);
+  P.set(x + 1, y, C.AR); P.set(x + 2, y, C.AR); P.set(x, y + 1, C.AR);
+  P.set(x + 2, y - 1, C.AM); P.set(x + 2, y - 2, C.AB);                       // spike
+  P.set(x + 7, y - 1, C.AB); P.set(x + 7, y - 2, C.AM); P.set(x + 7, y - 3, C.RB);   // tall spike, rust tip
+  P.set(x + 9, y - 1, C.RB);                                                   // broken stub
+  P.set(x + 5, y + 5, C.RB); P.set(x + 6, y + 6, C.RS);
+}
+function sPauldronFar(P, x, y){
+  P.box(x, y, 8, 6, C.AS, C.AB, C.OUT, {chamfer: true});
+  P.rect(x + 1, y + 3, 6, 1, C.OUT);
+}
+function sGorget(P, x, y){ P.box(x, y, 10, 3, C.AS, C.AB, C.OUT, {outline: false}); }
+// Corrupted great-helm: tall and narrow, broken iron crown of spikes, one crimson eye slit.
+// glow: -1 dead, 0 faint, 1 mid, 2 bright, 3 flare
+function sHelm(P, x, y, glow, side){
+  P.box(x, y, 12, 15, C.AB, C.AM, C.AS, {chamfer: true});
+  P.set(x + 1, y, C.AR); P.set(x + 2, y, C.AR); P.set(x, y + 1, C.AR);
+  P.rect(x, y + 3, 12, 1, C.AS);                                   // brow band
+  P.rect(x + 4, y + 4, 1, 9, C.AS);                                // visor seam
+  // broken crown of spikes
+  P.set(x + 2, y - 1, C.AB); P.set(x + 2, y - 2, C.AM);
+  P.set(x + 6, y - 1, C.AB); P.set(x + 6, y - 2, C.AB); P.set(x + 6, y - 3, C.AM); P.set(x + 6, y - 4, C.RB);
+  P.set(x + 10, y - 1, C.RB);
+  // wear
+  P.set(x + 1, y + 6, C.OUT); P.set(x + 2, y + 7, C.OUT); P.set(x + 2, y + 8, C.OUT);
+  P.set(x + 3, y + 2, C.RB); P.set(x + 9, y + 11, C.RB); P.set(x + 9, y + 12, C.RS);
+  P.set(x + 9, y + 8, C.OUT); P.set(x + 9, y + 10, C.OUT); P.set(x + 9, y + 12, C.OUT);
+  // eye slit and glow
+  P.rect(x + 5, y + 5, 6, 1, C.OUT);
+  if (glow >= 0) {
+    const gl = glow === 0 ? [7, 8] : [6, 7, 8, 9];
+    gl.forEach(i => P.set(x + i, y + 5, C.GL));
+    if (glow >= 2) { P.set(x + 7, y + 5, C.GG); P.set(x + 8, y + 5, C.GG); }
+    if (glow >= 3) { [6, 9].forEach(i => P.set(x + i, y + 5, C.GG)); P.set(x + 7, y + 4, C.CH); P.set(x + 8, y + 4, C.CH); P.set(x + 7, y + 6, C.CH); P.set(x + 8, y + 6, C.CH); }
+  }
+}
+
+// Torn cape, darker and more ragged than the player's. theta: 0 hangs straight down, 90 streams back.
+function sCape(P, cp, ax, ay){
+  const th = rad(cp.theta), ux = -Math.sin(th), uy = Math.cos(th), nx = Math.cos(th), ny = Math.sin(th);
+  const jag = [0, 3, 1, 4, 0, 3, 2];
+  for (let y = 0; y < FRAME; y++) for (let x = 0; x < FRAME; x++) {
+    if (x > ax + 1) continue;
+    const vx = x - ax, vy = y - ay, along = vx * ux + vy * uy;
+    if (along < -1) continue;
+    const sc = Math.max(0, Math.min(1, along / cp.len));
+    const w = cp.w0 + (cp.w1 - cp.w0) * sc, q = vx * nx + vy * ny;
+    const d = q - cp.amp * Math.sin(cp.ph - sc * 3) * sc + w / 2;
+    if (d < 0 || d > w) continue;
+    const j = jag[((Math.round(q) % 7) + 7) % 7] + Math.round(Math.sin(cp.ph + q * 0.9) * 0.8);
+    const hemAt = cp.len - 1 + j;
+    if (along > hemAt) continue;
+    if (sc > 0.3 && ((x * 5 + y * 11) % 13 === 0)) continue;       // moth-eaten holes
+    if (sc > 0.5 && ((x + y * 2) % 17 === 0)) continue;
+    let c = C.CS;
+    if (d < 1) c = C.CB;
+    else if (sc > 0.15 && Math.floor(d) % 3 === 2) c = C.OUT;
+    else if (sc > 0.2 && Math.floor(d) % 4 === 0) c = C.CB;
+    if (along > hemAt - 1.2) c = C.OUT;
+    P.set(x, y, c);
+  }
+}
+
+// Rusty broken longsword: wider blade, notched edge, rust blotches, bent guard, snapped tip.
+// alpha: 0 = point down, 90 = point forward, 180 = point up. H = hand centre.
+function drawSword(buf, H, alpha, guardHalf){
+  const gh = guardHalf || 4.5;
+  const a = rad(alpha), dx = Math.sin(a), dy = Math.cos(a), qx = Math.cos(a), qy = -Math.sin(a);
+  const px = [];
+  const at = (t, off) => [H[0] + dx * t + qx * off, H[1] + dy * t + qy * off];
+  const lanes = (t, offs, cols) => {
+    const pts = offs.map(o => at(t, o)).map((p, i) => ({p: p, i: i}));
+    pts.sort((u, v) => (u.p[0] + u.p[1]) - (v.p[0] + v.p[1]));       // lit side first
+    pts.forEach((o, k) => { if (cols[k] != null) px.push([Math.round(o.p[0]), Math.round(o.p[1]), cols[k]]); });
+  };
+  for (let t = -2.5; t <= 3.5; t += 0.35) lanes(t, [-0.7, 0.7], [C.RS, C.OUT]);          // grip
+  lanes(-3.5, [-0.7, 0.7], [C.RB, C.RS]); lanes(-2.9, [-0.7, 0.7], [C.RB, C.RS]);        // pommel
+  for (let s = -gh; s <= gh; s += 0.5) {                                                   // bent crossguard
+    const bend = s > 3 ? 1.3 : 0;
+    const A = at(4.2 + bend, s), B = at(5.0 + bend, s);
+    px.push([Math.round(A[0]), Math.round(A[1]), C.RH]);
+    px.push([Math.round(B[0]), Math.round(B[1]), C.RS]);
+  }
+  for (let t = 6; t <= 17.2; t += 0.3) {                                                   // blade
+    const rust = (Math.floor(t * 1.3) % 5) === 1, nick = (Math.floor(t * 2) % 7) === 3, broken = t > 15.6;
+    lanes(t, [-1, 0, 1], [(nick || broken) ? null : C.AM, rust ? C.RB : C.AB, rust ? C.RS : C.AS]);
+  }
+  { const T = at(17.8, 0.3); px.push([Math.round(T[0]), Math.round(T[1]), C.RB]); }       // jagged snapped tip
+  const set = (x, y, c) => { if (x >= 0 && y >= 0 && x < FRAME && y < FRAME) buf[y * FRAME + x] = c; };
+  const occ = new Set(px.map(p => p[0] + ',' + p[1]));
+  px.forEach(p => [[1,0],[-1,0],[0,1],[0,-1]].forEach(n => {
+    if (!occ.has((p[0] + n[0]) + ',' + (p[1] + n[1]))) set(p[0] + n[0], p[1] + n[1], C.OUT);
+  }));
+  px.forEach(p => set(p[0], p[1], p[2]));
+}
+// Dull slash trail (pale ash + mid grey) swept by the blade.
+function drawArc(buf, H, a0, a1, rOuter, rInner){
+  const n = Math.max(2, Math.ceil(Math.abs(a1 - a0) / 3));
+  for (let i = 0; i <= n; i++) {
+    const a = rad(a0 + (a1 - a0) * i / n), f = i / n;
+    const put = (r, c) => {
+      const x = Math.round(H[0] + r * Math.sin(a)), y = Math.round(H[1] + r * Math.cos(a));
+      if (x >= 0 && y >= 0 && x < FRAME && y < FRAME) buf[y * FRAME + x] = c;
+    };
+    if (f > 0.2 || i % 2 === 0) put(rOuter, C.AR);
+    if (f > 0.45) put(rInner, C.AM);
+  }
+}
+
+function drawBoot(P, ax, ay, tilt, base, hi, sh){
+  const bx = Math.round(ax) - 3, y0 = Math.round(ay);
+  if (tilt === 0) P.box(bx, y0, 10, 3, base, hi, sh);
+  else if (tilt > 0) { P.box(bx, y0 - 1, 4, 3, base, hi, sh); P.box(bx + 4, y0, 6, 3, base, hi, sh); }
+  else { P.box(bx, y0, 4, 3, base, hi, sh); P.box(bx + 4, y0 - 1, 6, 3, base, hi, sh); }
+}
+
+// ---------------- pose renderer ----------------
+function drawSentinel(buf, o){
+  const P = makePainter(buf), set = P.set, rect = P.rect, box = P.box;
+  const px = o.px || 0, py = o.py || 0;
+  const X = px + (o.cx || 0) + 1, Y = py + (o.cy || 0);            // chest (+1 = permanent hunch)
+  const HX = X + (o.hx || 0) + 1, HY = Y + (o.hy || 0);            // head  (+1 more = head thrust forward)
+
+  sCape(P, {theta: o.cape.theta, len: o.cape.len + 3, ph: o.cape.ph, amp: o.cape.amp, w0: o.cape.w0 + 1, w1: o.cape.w1 + 3}, 17 + X, 30 + Y);
+
+  // far arm
+  { const s = [17.5 + X, 34.5 + Y], r = ik(s[0], s[1], o.armF[0], o.armF[1], 4.2, 5.3, 'y');
+    paintMask(buf, limbMask([s, r.k, r.a], 5), C.AS, C.AB, C.OUT);
+    box(Math.round(r.a[0] - 2.5), Math.round(r.a[1] - 1.5), 5, 4, C.AB, C.AM, C.AS); }
+
+  // legs (ankles are absolute frame coordinates)
+  [{hx: 24, f: o.far, far: true}, {hx: 29, f: o.near, far: false}].forEach(L => {
+    const hipX = L.hx + px, hipY = 44 + py;
+    const r = ik(hipX, hipY, L.f.ax, L.f.ay - 1, 6, 6.5, 'x');
+    const col = L.far ? [C.AS, C.AB, C.OUT] : [C.AB, C.AM, C.AS];
+    paintMask(buf, limbMask([[hipX, hipY], r.k, r.a], 6), col[0], col[1], col[2]);
+    if (L.far) box(Math.round(r.k[0]) - 2, Math.round(r.k[1]) - 1, 5, 2, C.AB, C.AM, C.AS, {outline: false});
+    else { box(Math.round(r.k[0]) - 1, Math.round(r.k[1]) - 1, 5, 3, C.AM, C.AR, C.AB, {outline: false});
+           set(r.k[0] + 4, r.k[1], C.AM); }
+    drawBoot(P, r.a[0], L.f.ay, L.f.t || 0, col[0], col[1], col[2]);
+  });
+
+  // belt + tasset + tattered cloth strips follow the pelvis
+  box(18 + px, 39 + py, 18, 2, C.RS, C.RB, C.OUT, {outline: false});
+  box(26 + px, 39 + py, 3, 2, C.AM, C.AR, C.AB, {outline: false});
+  box(19 + px, 41 + py, 16, 3, C.AS, C.AB, C.OUT, {outline: false});
+  rect(19 + px, 44 + py, 16, 1, C.OUT);
+  rect(22 + px, 45 + py, 2, 5, C.CB); rect(23 + px, 45 + py, 1, 5, C.CS); set(22 + px, 50 + py, C.CS);
+  rect(30 + px, 45 + py, 3, 4, C.CS); rect(30 + px, 45 + py, 1, 3, C.CB); set(32 + px, 49 + py, C.CS);
+
+  sPauldronFar(P, 13 + X, 27 + Y);
+  sTorso(P, 18 + X, 27 + Y);
+  sGorget(P, 21 + X, 25 + Y);
+  sHelm(P, 22 + HX, 10 + HY, o.glow == null ? 1 : o.glow);
+  sPauldronNear(P, 28 + X, 26 + Y);
+
+  // near (sword) arm; the hand is wherever the arm really reaches, so the sword cannot detach
+  const sh = [32.5 + X, 35.5 + Y];
+  const r = ik(sh[0], sh[1], o.armN[0], o.armN[1], 4.2, 5.3, 'y');
+  paintMask(buf, limbMask([sh, r.k, r.a], 5), C.AB, C.AM, C.AS);
+  const H = r.a;
+  if (o.arc) drawArc(buf, H, o.arc[0], o.arc[1], 17, 14);
+  if (o.swordFree) drawSword(buf, [o.swordFree.x, o.swordFree.y], o.swordFree.a);
+  else drawSword(buf, H, o.sword);
+  box(Math.round(H[0] - 2.5), Math.round(H[1] - 1.5), 5, 4, C.AB, C.AM, C.AS, {outline: false});   // gauntlet over the grip
+}
+
+// Armour collapsing into a heap. stage 0 = pieces still falling, stage 1 = settled, glow gone.
+function drawHeap(buf, stage){
+  const P = makePainter(buf), box = P.box, set = P.set, rect = P.rect;
+  const mound = (cx, rx, ry, ground) => {
+    for (let x = cx - rx; x <= cx + rx; x++) {
+      const k = 1 - Math.pow((x - cx) / rx, 2); if (k <= 0) continue;
+      const top = Math.round(ground - ry * Math.sqrt(k)) + (((x * 7) % 5) === 0 ? 1 : 0);
+      for (let y = top; y <= ground; y++) {
+        if (((x * 5 + y * 11) % 13) === 0 && y < ground - 1) continue;
+        let c = C.CS; if (y === top || (x - (cx - rx)) < 2) c = C.CB; else if (((x + y) % 4) === 0) c = C.OUT;
+        set(x, y, c);
+      }
+    }
+  };
+  if (stage === 0) {
+    mound(14, 12, 12, 58);
+    box(4, 54, 15, 5, C.AS, C.AB, C.OUT); box(0, 56, 8, 3, C.AB, C.AM, C.AS);          // far greave + boot
+    box(16, 55, 14, 4, C.AB, C.AM, C.AS); box(28, 56, 9, 3, C.AB, C.AM, C.AS);          // near greave + boot
+    sTorso(P, 14, 42);
+    sPauldronFar(P, 6, 36);
+    sPauldronNear(P, 31, 38);
+    sHelm(P, 38, 22, 0);
+    drawSword(buf, [51, 36], 8);
+  } else {
+    mound(15, 13, 8, 58);
+    box(3, 55, 15, 4, C.AS, C.AB, C.OUT); box(0, 56, 7, 3, C.AB, C.AM, C.AS);
+    box(16, 56, 14, 3, C.AB, C.AM, C.AS); box(28, 57, 8, 2, C.AB, C.AM, C.AS);
+    // breastplate lying on its side
+    box(9, 48, 18, 10, C.AS, C.AB, C.OUT);
+    rect(10, 48, 3, 1, C.AM); rect(11, 52, 14, 1, C.OUT); set(13, 54, C.RB); set(14, 55, C.RS); set(22, 50, C.RB); set(23, 51, C.RS); set(20, 56, C.RB);
+    sPauldronFar(P, 4, 50);
+    sPauldronNear(P, 22, 49);
+    drawSword(buf, [40, 57], 95, 1.5);
+    // helm on its side, eye slit now vertical and dark
+    box(30, 49, 13, 10, C.AB, C.AM, C.AS, {chamfer: true});
+    rect(36, 51, 1, 6, C.OUT); rect(30, 52, 13, 1, C.AS);
+    set(43, 51, C.AM); set(44, 51, C.AB); set(43, 55, C.RB); set(44, 55, C.RS); set(33, 56, C.RB); set(34, 57, C.RS);
+    set(32, 50, C.AR); set(33, 50, C.AR);
+  }
+}
+
+function renderPose(o){
+  const buf = new Uint8Array(FRAME * FRAME);
+  if (o.heap != null) {
+    drawHeap(buf, o.heap);
+    if (o.shift) { const t = buf.slice(); buf.fill(0);                        // slide the pile right so nothing touches the left edge
+      for (let y = 0; y < FRAME; y++) for (let x = 0; x < FRAME; x++) { const nx = x + o.shift; if (nx >= 0 && nx < FRAME) buf[y * FRAME + nx] = t[y * FRAME + x]; } }
+  } else { drawSentinel(buf, o); buf.fill(0, 59 * FRAME); }          // limbs dipping under the ground line are cut flat (kneeling)
+  outlinePass(buf);
+  if (o.flash) for (let i = 0; i < buf.length; i++) {
+    const c = buf[i]; if (c && c !== C.OUT && c !== C.GL && c !== C.GG) buf[i] = C.BONE;    // impact flash, glow stays
+  }
+  return buf;
+}
+
+// ---------------- animation data ----------------
+const cape = (theta, len, ph, amp, w0, w1) => ({theta: theta, len: len, ph: ph, amp: amp == null ? 1.3 : amp, w0: w0 || 5, w1: w1 || 11});
+const NEAR0 = {ax: 31, ay: 56, t: 0}, FAR0 = {ax: 23, ay: 56, t: 0};
+
+// IDLE: 4 frames. Slow hunched breathing, the sword hangs low, the eye glow pulses.
+const IDLE_PY = [0, 0, 1, 1], IDLE_HX = [0, 1, 1, 0], IDLE_GLOW = [2, 1, 0, 1];
+const IDLE = [0, 1, 2, 3].map(i => ({
+  py: IDLE_PY[i], hx: IDLE_HX[i], glow: IDLE_GLOW[i], near: NEAR0, far: FAR0,
+  armN: [36, 40 - (i > 1 ? 1 : 0)], sword: 12 - (i === 2 ? 2 : 0), armF: [18, 44 + (i > 1 ? 1 : 0)],
+  cape: cape(14 + (i % 2) * 3, 17, i * TAU / 4, 1.4, 5, 11)
+}));
+
+// WALK: 6 frames. Heavy shamble: short stride, low lift, sword dragged, body swaying forward.
+function gait(phase, S, L){
+  if (phase < 0.5) return {x: S - 2 * S * (phase / 0.5), lift: 0, u: -1};
+  const u = (phase - 0.5) / 0.5;
+  return {x: -S + 2 * S * u, lift: L * Math.sin(Math.PI * u), u: u};
+}
+function tilt(g){ if (g.u < 0) return 0; if (g.u < 0.3) return 1; if (g.u >= 0.7) return -1; return 0; }
+const WALK_PY = [1, 0, 0, 1, 0, 0];
+const WALK = [0, 1, 2, 3, 4, 5].map(i => {
+  const a = i / 6 * TAU, c = Math.cos(a);
+  const foot = ph => { const g = gait(ph, 4, 3.5); return {ax: 27 + g.x, ay: 56 - g.lift, t: tilt(g)}; };
+  return {
+    py: WALK_PY[i], cx: (i % 3 === 0) ? 1 : 0, hx: 1, glow: 1,
+    near: foot(i / 6), far: foot(((i + 3) % 6) / 6),
+    armN: [35 - 2 * c, 41], sword: 20 - 8 * c, armF: [18 + 2 * c, 43],
+    cape: cape(16 + 4 * Math.sin(a), 17, a, 1.6, 5, 11)
+  };
+});
+
+// ATTACK: 6 frames. Anticipation, wind-up, overhead, heavy slam (hit frame), follow-through, recovery.
+const ATTACK = [
+  {py: 1, px: -1, cx: 0, hx: 1, glow: 2, near: {ax: 30, ay: 56, t: 0}, far: {ax: 22, ay: 56, t: 0},
+   armN: [32, 41], sword: -28, armF: [17, 42], cape: cape(8, 17, 0, 1.2)},
+  {py: 0, px: -1, cx: -1, hx: 0, glow: 2, near: {ax: 31, ay: 56, t: 0}, far: {ax: 22, ay: 56, t: 0},
+   armN: [24, 31], sword: -155, armF: [17, 38], cape: cape(14, 17, 1, 1.2)},
+  {py: 1, px: 1, cx: 1, hx: 1, glow: 3, near: {ax: 33, ay: 56, t: 0}, far: {ax: 22, ay: 56, t: 1},
+   armN: [38, 28], sword: 150, armF: [17, 40], cape: cape(28, 17, 2, 1.5), arc: [208, 160]},
+  {py: 3, px: 2, cx: 3, hx: 2, glow: 3, near: {ax: 36, ay: 56, t: 0}, far: {ax: 21, ay: 56, t: 1},
+   armN: [40, 40], sword: 55, armF: [17, 42], cape: cape(40, 17, 3, 1.5), arc: [152, 72]},
+  {py: 3, px: 2, cx: 3, hx: 2, glow: 2, near: {ax: 36, ay: 56, t: 0}, far: {ax: 22, ay: 56, t: 1},
+   armN: [40, 42], sword: 33, armF: [17, 43], cape: cape(45, 17, 4, 1.5)},
+  {py: 1, px: 1, cx: 1, hx: 1, glow: 1, near: {ax: 31, ay: 56, t: 0}, far: {ax: 23, ay: 56, t: 0},
+   armN: [36, 41], sword: 15, armF: [18, 43], cape: cape(18, 17, 5, 1.2)}
+];
+
+// DAMAGE: 2 frames. Flash + head snap, then a staggering recoil.
+const DAMAGE = [
+  {py: 0, px: -1, cx: -1, hx: -2, glow: 3, flash: true, near: NEAR0, far: FAR0,
+   armN: [32, 38], sword: -25, armF: [17, 39], cape: cape(-6, 15, 0, 1, 6, 11)},
+  {py: 2, px: -3, cx: -1, hx: -2, glow: 1, near: {ax: 30, ay: 56, t: 0}, far: {ax: 21, ay: 54, t: 1},
+   armN: [27, 40], sword: -55, armF: [15, 36], cape: cape(18, 12, 1, 1.2, 5, 9)}
+];
+
+// DEATH: 6 frames. Hit-flash, knees buckle, kneel on the sword, slump (sword drops), armour falls apart, settled heap.
+const DEATH = [
+  {py: 0, px: -1, cx: -1, hx: -2, glow: 3, flash: true, near: NEAR0, far: FAR0,
+   armN: [32, 38], sword: -25, armF: [17, 39], cape: cape(-6, 15, 0, 1, 6, 11)},
+  {py: 4, px: -2, cx: 0, hx: 1, hy: 1, glow: 1, near: {ax: 32, ay: 56, t: 0}, far: {ax: 22, ay: 56, t: 0},
+   armN: [33, 45], sword: 28, armF: [17, 46], cape: cape(22, 16, 1, 1.2)},
+  {py: 8, px: -1, cx: 1, hx: 2, hy: 1, glow: 0, near: {ax: 37, ay: 56, t: 0}, far: {ax: 17, ay: 56, t: 0},
+   armN: [35, 48], sword: 55, armF: [18, 49], cape: cape(30, 14, 2, 1.2)},
+  {py: 10, px: -1, cx: 3, cy: 2, hx: 3, hy: 3, glow: 0, near: {ax: 37, ay: 56, t: 0}, far: {ax: 16, ay: 56, t: 0},
+   armN: [36, 52], swordFree: {x: 38, y: 49, a: 78}, armF: [20, 52], cape: cape(35, 13, 3, 1)},
+  {heap: 0, shift: 2},
+  {heap: 1, shift: 2}
+];
+
+const POSE_SETS = {idle: IDLE, walk: WALK, attack: ATTACK, damage: DAMAGE, death: DEATH};
+// ==== GENERATOR END ====
+
+
+// ---------- sheet layout: 6 columns x 5 rows of 64 x 64 cells = 384 x 320 ----------
+const SHEET_W = 384, SHEET_H = 320;
+const NAMES = ['Outline / deepest shadow','Armour shadow','Armour base','Armour mid','Armour rim light',
+               'Cape shadow','Cape base','Cape highlight','Rust shadow','Rust','Rust highlight','Damage flash','Crimson glow','Crimson glow core'];
+const SHARED = [1,1,1,1,1,1,1,1,0,0,0,1,0,0];
+const RGB = HEX.map(h => h ? [1,3,5].map(i => parseInt(h.slice(i, i + 2), 16)) : null);
+
+const ANIMS = {
+  idle:   {label: 'Idle',   row: 0, count: 4, fps: 6,  loop: true},
+  walk:   {label: 'Walk',   row: 1, count: 6, fps: 8,  loop: true},
+  attack: {label: 'Attack', row: 2, count: 6, fps: 10, loop: false},
+  damage: {label: 'Damage', row: 3, count: 2, fps: 8,  loop: false},
+  death:  {label: 'Death',  row: 4, count: 6, fps: 8,  loop: false}
+};
+Object.keys(ANIMS).forEach(k => {
+  const a = ANIMS[k]; a.idx = 0; a.playing = true; a.last = 0;
+  a.frames = POSE_SETS[k].map(renderPose);
+});
+let cur = 'idle';
+
+function toImageData(buf){
+  const img = new ImageData(FRAME, FRAME);
+  for (let i = 0; i < buf.length; i++) {
+    const c = buf[i];
+    if (!c) continue;
+    img.data[i*4] = RGB[c][0]; img.data[i*4+1] = RGB[c][1]; img.data[i*4+2] = RGB[c][2]; img.data[i*4+3] = 255;
+  }
+  return img;
+}
+const $ = id => document.getElementById(id);
+const sheet = $('sheet'), sctx = sheet.getContext('2d');
+sctx.clearRect(0, 0, SHEET_W, SHEET_H);
+Object.keys(ANIMS).forEach(k => {
+  const a = ANIMS[k];
+  a.frames.forEach((b, i) => sctx.putImageData(toImageData(b), i * FRAME, a.row * FRAME));
+});
+
+// ---------- palette ----------
+$('palette').innerHTML = NAMES.map((n, i) =>
+  '<div class="sw"><i style="background:' + HEX[i+1] + '"></i>' + n + '<br>' + HEX[i+1] + (SHARED[i] ? '' : ' (new)') + '</div>').join('');
+
+// ---------- layout table + report ----------
+(function(){
+  let rows = '', lines = [], total = 0, problems = 0;
+  const used = new Set();
+  Object.keys(ANIMS).forEach(k => {
+    const a = ANIMS[k], xs = [];
+    a.frames.forEach((b, f) => {
+      let x0 = 64, x1 = -1, y0 = 64, y1 = -1;
+      for (let y = 0; y < 64; y++) for (let x = 0; x < 64; x++) {
+        const c = b[y*64 + x]; if (!c) continue;
+        used.add(c);
+        if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y;
+      }
+      const clip = x0 < 1 || x1 > 62 || y0 < 1 || y1 > 60;
+      if (clip) problems++;
+      total++;
+      xs.push(f * 64);
+      lines.push(a.label.padEnd(6) + ' f' + f + '  sourceX ' + String(f*64).padStart(3) + '  sourceY ' + String(a.row*64).padStart(3) +
+        '  bbox x ' + String(x0).padStart(2) + '-' + x1 + ', y ' + String(y0).padStart(2) + '-' + y1 +
+        (clip ? '  CLIPPING' : (y1 >= 59 ? '  on ground' : '  airborne')));
+    });
+    rows += '<tr><td>' + a.row + '</td><td>' + a.label + '</td><td>' + a.count + '</td><td>' + (a.row * 64) + '</td><td>' +
+            xs.join(', ') + '</td><td>' + a.fps + ' fps, ' + (a.loop ? 'loops' : 'plays once') + '</td></tr>';
+  });
+  $('layout').innerHTML = rows;
+  lines.push('');
+  lines.push('Frames: ' + total + ' of 24. Clipping problems: ' + problems + '. Sheet: ' + SHEET_W + ' x ' + SHEET_H + ' (6 columns x 5 rows of 64 x 64).');
+  lines.push('Palette: ' + used.size + ' of 14 colours used. Pixels are fully opaque or fully transparent.');
+  $('report').textContent = lines.join('\n');
+})();
+
+// ---------- sheet view ----------
+function updateSheetView(){
+  const z = +$('zoom').value;
+  sheet.style.width = SHEET_W * z + 'px';
+  sheet.style.height = SHEET_H * z + 'px';
+  const cell = FRAME * z, ov = $('gridOverlay');
+  if ($('grid').checked) {
+    ov.style.backgroundImage =
+      'linear-gradient(to right, rgba(184,146,63,.5) 1px, transparent 1px),' +
+      'linear-gradient(to bottom, rgba(184,146,63,.5) 1px, transparent 1px)';
+    ov.style.backgroundSize = cell + 'px ' + cell + 'px';
+  } else ov.style.backgroundImage = 'none';
+}
+$('zoom').onchange = updateSheetView;
+$('grid').onchange = updateSheetView;
+updateSheetView();
+
+// ---------- concept / base pose view (idle frame 0) ----------
+const base = $('base'), bctx = base.getContext('2d');
+function drawBase(){
+  bctx.imageSmoothingEnabled = false;
+  bctx.clearRect(0, 0, 512, 512);
+  bctx.drawImage(sheet, 0, 0, FRAME, FRAME, 0, 0, 512, 512);
+  if ($('guides').checked) {
+    bctx.lineWidth = 1;
+    bctx.strokeStyle = '#D9BC73'; bctx.beginPath(); bctx.moveTo(0, 480.5); bctx.lineTo(512, 480.5); bctx.stroke();   // baseline y = 60
+    bctx.strokeStyle = '#862235'; bctx.beginPath(); bctx.moveTo(228.5, 0); bctx.lineTo(228.5, 512); bctx.stroke();   // anchor x = 28
+    bctx.strokeStyle = 'rgba(160,159,164,.5)'; bctx.strokeRect(0.5, 0.5, 511, 511);
+  }
+}
+$('guides').onchange = drawBase;
+drawBase();
+
+// ---------- export ----------
+function download(canvas, name){
+  canvas.toBlob(function(blob){
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob); a.download = name;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(function(){ URL.revokeObjectURL(a.href); }, 1000);
+  }, 'image/png');
+}
+$('dlSheet').onclick = function(){ download(sheet, 'sentinel_spritesheet.png'); };
+$('dlBase').onclick = function(){
+  const c = document.createElement('canvas'); c.width = c.height = FRAME;
+  c.getContext('2d').putImageData(toImageData(ANIMS.idle.frames[0]), 0, 0);
+  download(c, 'sentinel_base_pose.png');
+};
+
+// ---------- game-scale preview ----------
+const game = $('game'), gx = game.getContext('2d');
+const GROUND = 470, CX = 480;
+function drawGame(){
+  const a = ANIMS[cur], s = +$('scale').value;
+  gx.imageSmoothingEnabled = false;
+  const g = gx.createLinearGradient(0, 0, 0, 540);
+  g.addColorStop(0, '#17161B'); g.addColorStop(1, '#25242A');
+  gx.fillStyle = g; gx.fillRect(0, 0, 960, 540);
+  gx.fillStyle = '#0E0D10'; gx.fillRect(0, GROUND, 960, 540 - GROUND);
+  gx.fillStyle = '#3B3A42'; gx.fillRect(0, GROUND, 960, 2);
+  // sourceX = frameIndex * 64, sourceY = animationRow * 64; placed by feet (y 60) and anchor (x 28)
+  const dx = Math.round(CX - 28 * s), dy = Math.round(GROUND - 60 * s);
+  gx.drawImage(sheet, a.idx * FRAME, a.row * FRAME, FRAME, FRAME, dx, dy, FRAME * s, FRAME * s);
+  if ($('refbox').checked) {
+    gx.save(); gx.strokeStyle = '#B8923F'; gx.setLineDash([5, 4]); gx.lineWidth = 1;
+    gx.strokeRect(CX - 16 + .5, GROUND - 60 + .5, 31, 59); gx.restore();
+    gx.fillStyle = '#6E6D74'; gx.font = '12px system-ui,sans-serif';
+    gx.fillText('player size 32 x 60', CX + 24, GROUND - 66);
+  }
+  gx.fillStyle = '#D9BC73'; gx.font = '600 22px Georgia,serif'; gx.fillText(a.label.toUpperCase(), 24, 38);
+  gx.fillStyle = '#A09FA4'; gx.font = '16px system-ui,sans-serif';
+  gx.fillText('frame ' + (a.idx + 1) + ' / ' + a.count + (a.loop ? '  (loops)' : '  (plays once)') + '  -  ' + a.fps + ' fps', 24, 62);
+  $('frameLabel').textContent = a.label + ': frame ' + a.idx + ' of ' + (a.count - 1) +
+    ' (sourceX ' + a.idx * FRAME + ', sourceY ' + a.row * FRAME + ').';
+}
+function syncControls(){
+  const a = ANIMS[cur];
+  $('anim').value = cur; $('fps').value = a.fps; $('fpsLabel').textContent = a.fps + ' fps'; $('loop').checked = a.loop;
+  $('play').textContent = a.playing ? 'Pause' : (!a.loop && a.idx === a.count - 1 ? 'Replay' : 'Play');
+  drawGame();
+}
+$('anim').onchange = function(){ cur = this.value; syncControls(); };
+$('loop').onchange = function(){ ANIMS[cur].loop = this.checked; };
+$('scale').onchange = drawGame;
+$('refbox').onchange = drawGame;
+$('fps').oninput = function(){ ANIMS[cur].fps = +this.value; $('fpsLabel').textContent = this.value + ' fps'; };
+$('play').onclick = function(){
+  const a = ANIMS[cur];
+  if (!a.playing && !a.loop && a.idx === a.count - 1) a.idx = 0;
+  a.playing = !a.playing; a.last = 0; syncControls();
+};
+$('prev').onclick = function(){ const a = ANIMS[cur]; a.playing = false; a.idx = (a.idx + a.count - 1) % a.count; syncControls(); };
+$('next').onclick = function(){ const a = ANIMS[cur]; a.playing = false; a.idx = (a.idx + 1) % a.count; syncControls(); };
+function tick(t){
+  let dirty = false;
+  Object.keys(ANIMS).forEach(k => {
+    const a = ANIMS[k];
+    if (!a.playing) return;
+    if (!a.last) a.last = t;
+    const step = 1000 / a.fps;
+    if (t - a.last >= step) {
+      let n = a.idx + Math.floor((t - a.last) / step);
+      a.last = t - ((t - a.last) % step);
+      if (n >= a.count) {
+        if (a.loop) n %= a.count;
+        else { n = a.count - 1; a.playing = false; if (k === cur) $('play').textContent = 'Replay'; }
+      }
+      a.idx = n;
+      if (k === cur) dirty = true;
+    }
+  });
+  if (dirty) drawGame();
+  requestAnimationFrame(tick);
+}
+syncControls();
+requestAnimationFrame(tick);
+
+})();
+</script>
+</body>
+</html>

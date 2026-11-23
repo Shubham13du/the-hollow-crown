@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>The Hollow Crown</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <main class="game-container">
+    <header class="game-header">
+      <h1>THE HOLLOW CROWN</h1>
+      <p>A KINGDOM FORGOTTEN</p>
+    </header>
+
+    <button id="deathSnowTestButton" type="button">TEST DEATH SNOW</button>
+
+    <canvas id="gameCanvas" width="960" height="540">
+      Your browser does not support Canvas.
+    </canvas>
+
+    <footer class="game-controls">
+      <p>MOVE: A / D</p>
+      <p>JUMP / FLY: SPACE / W</p>
+      <p>DESCEND: S</p>
+      <p>ATTACK: J</p>
+      <p>INTERACT: E</p>
+    </footer>
+  </main>
+
+  <!-- Main menu sits above the running canvas. Existing game files remain untouched. -->
+  <section id="mainMenu" class="main-menu" aria-label="Main menu">
+    <div class="menu-atmosphere"></div>
+    <div class="menu-moon"></div>
+    <div class="menu-ruins menu-ruins-back"></div>
+    <div class="menu-ruins menu-ruins-front"></div>
+    <div class="menu-wanderer" aria-hidden="true">
+      <div class="wanderer-sword"></div>
+      <div class="wanderer-cloak"></div>
+      <div class="wanderer-hood"></div>
+      <div class="wanderer-face"></div>
+      <div class="wanderer-glow"></div>
+    </div>
+    <div class="menu-vignette"></div>
+
+    <div class="menu-content">
+      <div class="menu-eyebrow">AN ANCIENT KINGDOM • A FORGOTTEN OATH</div>
+      <h1 class="menu-title">THE HOLLOW CROWN</h1>
+      <div class="menu-divider"><span></span>✦<span></span></div>
+      <p class="menu-subtitle">THE STORY OF ACHILLES, THE WANDERER</p>
+      <p class="menu-tagline">A kingdom forgotten. A crown abandoned. A journey begins.</p>
+
+      <nav class="menu-actions" aria-label="Game menu">
+        <button id="startJourneyButton" class="menu-button menu-button-primary" type="button">
+          <span>START JOURNEY</span><b>→</b>
+        </button>
+        <button id="continueJourneyButton" class="menu-button" type="button" disabled
+          title="The save system has not been added yet">
+          <span>CONTINUE</span><small>COMING SOON</small>
+        </button>
+        <button id="settingsButton" class="menu-button" type="button">SETTINGS</button>
+        <button id="creditsButton" class="menu-button" type="button">CREDITS</button>
+      </nav>
+      <p class="menu-footnote">PRESS START TO ENTER THE FORGOTTEN RUINS</p>
+    </div>
+
+    <div class="menu-corner menu-corner-left">I</div>
+    <div class="menu-corner menu-corner-right">THE WANDERER</div>
+
+    <div id="menuInfoPanel" class="menu-info-panel" hidden>
+      <button id="closeInfoPanel" class="panel-close" type="button" aria-label="Close panel">×</button>
+      <h2 id="infoPanelTitle">SETTINGS</h2>
+      <p id="infoPanelText"></p>
+    </div>
+  </section>
+
+  <script src="game.js"></script>
+  <script src="world2_fix.js"></script>
+  <script src="death_snow.js"></script>
+  <script src="audio-manager.js"></script>
+  <script src="main-menu.js"></script>
+
+  <script>
+    document.getElementById("deathSnowTestButton").addEventListener("click", function () {
+      dsResetWorld();
+
+      worldTwoState.phase = 4;
+      deathSnowState.active = true;
+      deathSnowState.entryTimer = 0;
+      deathSnowState.transition = 90;
+      deathSnowState.region = "mountains";
+
+      player.gameOver = false;
+      player.levelComplete = false;
+      player.x = DEATH_SNOW.start + 85;
+      player.y = ground.y - player.height;
+      player.velocityX = 0;
+      player.velocityY = 0;
+      player.grounded = true;
+      player.health = player.maxHealth;
+      player.checkpointX = DEATH_SNOW.start + 85;
+
+      deathSnowState.checkpoint = player.checkpointX;
+
+      camera.x = DEATH_SNOW.start;
+      camera.targetX = DEATH_SNOW.start;
+      enemies.length = 0;
+
+      dsCreatePotions();
+      dsSpawnWave(0);
+
+      showNotification("WORLD III — THE DEATH SNOW");
+    });
+  </script>
+
+  <script src="main-menu.js"></script>
+</body>
+</html>

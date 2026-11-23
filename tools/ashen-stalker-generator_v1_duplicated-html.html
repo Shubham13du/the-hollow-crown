@@ -1,0 +1,853 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The Hollow Crown - Ashen Stalker Sprite Generator</title>
+<style>
+  :root{
+    --out:#0E0D10; --panel:#17161B; --edge:#3B3A42; --ash:#6E6D74; --pale:#A09FA4;
+    --burg:#5E1424; --wine:#862235; --gold:#B8923F; --pgold:#D9BC73;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;padding:24px;background:var(--out);color:var(--pale);font:14px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif}
+  h1{font:600 22px/1.2 Georgia,serif;color:var(--gold);margin:0 0 4px;letter-spacing:.04em}
+  h2{font:600 14px/1.2 Georgia,serif;color:var(--pgold);margin:0 0 12px;letter-spacing:.08em;text-transform:uppercase}
+  p{margin:0 0 10px}
+  p.sub{margin:0 0 20px;color:var(--ash)}
+  section{background:var(--panel);border:1px solid var(--edge);border-radius:6px;padding:16px;margin-bottom:16px}
+  .row{display:flex;flex-wrap:wrap;gap:16px;align-items:flex-start}
+  .controls{display:flex;flex-wrap:wrap;gap:12px;align-items:center;margin:0 0 12px}
+  .controls label{display:flex;gap:6px;align-items:center;color:var(--pale)}
+  .checker{
+    background-color:#26252b;
+    background-image:linear-gradient(45deg,#1d1c21 25%,transparent 25%,transparent 75%,#1d1c21 75%),
+                     linear-gradient(45deg,#1d1c21 25%,transparent 25%,transparent 75%,#1d1c21 75%);
+    background-size:16px 16px;background-position:0 0,8px 8px;
+  }
+  canvas{display:block;image-rendering:pixelated}
+  button,select{
+    font:inherit;color:var(--pgold);background:var(--burg);border:1px solid var(--gold);
+    border-radius:4px;padding:6px 12px;cursor:pointer
+  }
+  button:hover{background:var(--wine)}
+  select{background:var(--out)}
+  input[type=range]{accent-color:var(--gold)}
+  .swatches{display:flex;flex-wrap:wrap;gap:8px}
+  .sw{width:92px;font-size:11px;color:var(--pale)}
+  .sw i{display:block;height:28px;border:1px solid var(--edge);margin-bottom:3px}
+  #sheetScroll{overflow:auto;max-width:100%}
+  #sheetWrap{position:relative;display:inline-block}
+  #gridOverlay{position:absolute;inset:0;pointer-events:none}
+  pre{margin:12px 0 0;padding:10px;background:var(--out);border:1px solid var(--edge);border-radius:4px;
+      color:var(--pale);font:12px/1.5 ui-monospace,Menlo,Consolas,monospace;overflow:auto}
+  code{color:var(--pgold)}
+  #game{width:100%;max-width:960px;height:auto;background:var(--out);border:1px solid var(--edge)}
+  .note{color:var(--ash);font-size:13px}
+  table.lay{border-collapse:collapse;margin-top:12px;font-size:13px}
+  table.lay th,table.lay td{border:1px solid var(--edge);padding:4px 10px;text-align:left}
+  table.lay th{color:var(--pgold)}
+</style>
+</head>
+<body>
+
+<h1>The Hollow Crown &middot; Ashen Stalker Generator</h1>
+<p class="sub">World II fast melee enemy: 6 animations, 37 frames. Standalone tool, separate from your game files and from every other sprite sheet.</p>
+
+<section>
+  <h2>Palette (15 colours, the World II reference palette; outline and bronze shared with the player)</h2>
+  <div class="swatches" id="palette"></div>
+</section>
+
+<section>
+  <h2>Base pose (idle frame 0)</h2>
+  <div class="controls">
+    <label><input type="checkbox" id="guides" checked> Show guides (baseline y = 76, anchor x = 36)</label>
+    <button id="dlBase">Download base pose PNG (80 x 80)</button>
+  </div>
+  <div class="checker" style="display:inline-block"><canvas id="base" width="640" height="640"></canvas></div>
+  <p class="note" style="margin-top:8px">Shown at 8x (80 x 80 frame). Guides are preview-only and are never exported.</p>
+</section>
+
+<section>
+  <h2>Sprite sheet (640 x 480, transparent)</h2>
+  <div class="controls">
+    <label>Zoom
+      <select id="zoom"><option value="1">1x</option><option value="2" selected>2x</option></select>
+    </label>
+    <label><input type="checkbox" id="grid" checked> Show 80 px cell grid</label>
+    <button id="dlSheet">Download sprite sheet PNG</button>
+  </div>
+  <div id="sheetScroll">
+    <div id="sheetWrap" class="checker">
+      <canvas id="sheet" width="640" height="480"></canvas>
+      <div id="gridOverlay"></div>
+    </div>
+  </div>
+  <p class="note" style="margin-top:8px">
+    Source rectangle for any frame: <code>sourceX = frameIndex * 80</code>, <code>sourceY = animationRow * 80</code>, size 80 x 80.
+    Unused cells are transparent.
+  </p>
+  <table class="lay">
+    <thead><tr><th>Row</th><th>Animation</th><th>Frames</th><th>sourceY</th><th>sourceX per frame</th><th>Suggested playback</th></tr></thead>
+    <tbody id="layout"></tbody>
+  </table>
+  <pre id="report"></pre>
+</section>
+
+<section>
+  <h2>Animation preview at game scale (960 x 540)</h2>
+  <div class="controls">
+    <label>Animation
+      <select id="anim">
+        <option value="idle" selected>Idle (row 0, 6 frames)</option>
+        <option value="walk">Walk (row 1, 8 frames)</option>
+        <option value="run">Run (row 2, 8 frames)</option>
+        <option value="attack">Attack (row 3, 6 frames)</option>
+        <option value="damage">Damage (row 4, 3 frames)</option>
+        <option value="death">Death (row 5, 6 frames)</option>
+      </select>
+    </label>
+    <button id="play">Pause</button>
+    <label><input type="checkbox" id="loop"> Loop</label>
+    <button id="prev">&larr; Frame</button>
+    <button id="next">Frame &rarr;</button>
+    <label>Speed <input type="range" id="fps" min="2" max="14" value="6"> <span id="fpsLabel">6 fps</span></label>
+    <label>Draw scale
+      <select id="scale">
+        <option value="1">1x (Stalker 69 px tall)</option>
+        <option value="1.25" selected>1.25x (documented scale, about 86 px tall)</option>
+        <option value="1.5">1.5x</option>
+        <option value="2">2x</option>
+      </select>
+    </label>
+    <label><input type="checkbox" id="refbox" checked> Show 32 x 60 player-size box</label>
+  </div>
+  <canvas id="game" width="960" height="540"></canvas>
+  <p class="note" style="margin-top:8px">
+    Sprites are placed by their feet (frame y = 76) and anchor (frame x = 36), as documented in SPRITESHEET_MAP.md.
+    The sprite faces right; mirror it in your game for left-facing, pivoting about the anchor (the anchor sits at x = 44 of the mirrored 80 px frame).
+    <span id="frameLabel"></span>
+  </p>
+</section>
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The Hollow Crown - Hollow Sentinel Sprite Generator</title>
+<style>
+  :root{
+    --out:#0E0D10; --panel:#17161B; --edge:#3B3A42; --ash:#6E6D74; --pale:#A09FA4;
+    --burg:#5E1424; --wine:#862235; --gold:#B8923F; --pgold:#D9BC73;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;padding:24px;background:var(--out);color:var(--pale);font:14px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif}
+  h1{font:600 22px/1.2 Georgia,serif;color:var(--gold);margin:0 0 4px;letter-spacing:.04em}
+  h2{font:600 14px/1.2 Georgia,serif;color:var(--pgold);margin:0 0 12px;letter-spacing:.08em;text-transform:uppercase}
+  p{margin:0 0 10px}
+  p.sub{margin:0 0 20px;color:var(--ash)}
+  section{background:var(--panel);border:1px solid var(--edge);border-radius:6px;padding:16px;margin-bottom:16px}
+  .row{display:flex;flex-wrap:wrap;gap:16px;align-items:flex-start}
+  .controls{display:flex;flex-wrap:wrap;gap:12px;align-items:center;margin:0 0 12px}
+  .controls label{display:flex;gap:6px;align-items:center;color:var(--pale)}
+  .checker{
+    background-color:#26252b;
+    background-image:linear-gradient(45deg,#1d1c21 25%,transparent 25%,transparent 75%,#1d1c21 75%),
+                     linear-gradient(45deg,#1d1c21 25%,transparent 25%,transparent 75%,#1d1c21 75%);
+    background-size:16px 16px;background-position:0 0,8px 8px;
+  }
+  canvas{display:block;image-rendering:pixelated}
+  button,select{
+    font:inherit;color:var(--pgold);background:var(--burg);border:1px solid var(--gold);
+    border-radius:4px;padding:6px 12px;cursor:pointer
+  }
+  button:hover{background:var(--wine)}
+  select{background:var(--out)}
+  input[type=range]{accent-color:var(--gold)}
+  .swatches{display:flex;flex-wrap:wrap;gap:8px}
+  .sw{width:92px;font-size:11px;color:var(--pale)}
+  .sw i{display:block;height:28px;border:1px solid var(--edge);margin-bottom:3px}
+  #sheetScroll{overflow:auto;max-width:100%}
+  #sheetWrap{position:relative;display:inline-block}
+  #gridOverlay{position:absolute;inset:0;pointer-events:none}
+  pre{margin:12px 0 0;padding:10px;background:var(--out);border:1px solid var(--edge);border-radius:4px;
+      color:var(--pale);font:12px/1.5 ui-monospace,Menlo,Consolas,monospace;overflow:auto}
+  code{color:var(--pgold)}
+  #game{width:100%;max-width:960px;height:auto;background:var(--out);border:1px solid var(--edge)}
+  .note{color:var(--ash);font-size:13px}
+  table.lay{border-collapse:collapse;margin-top:12px;font-size:13px}
+  table.lay th,table.lay td{border:1px solid var(--edge);padding:4px 10px;text-align:left}
+  table.lay th{color:var(--pgold)}
+</style>
+</head>
+<body>
+
+<h1>The Hollow Crown &middot; Hollow Sentinel Generator</h1>
+<p class="sub">First regular enemy: 5 animations, 24 frames. Standalone tool, separate from your game files and from the player's sprite sheet.</p>
+
+<section>
+  <h2>Palette (14 colours: 9 shared with the player, 5 enemy-only)</h2>
+  <div class="swatches" id="palette"></div>
+</section>
+
+<section>
+  <h2>Concept preview (idle frame 0)</h2>
+  <div class="controls">
+    <label><input type="checkbox" id="guides" checked> Show guides (baseline y = 60, anchor x = 28)</label>
+    <button id="dlBase">Download base pose PNG (64 x 64)</button>
+  </div>
+  <div class="checker" style="display:inline-block"><canvas id="base" width="512" height="512"></canvas></div>
+  <p class="note" style="margin-top:8px">Shown at 8x. Guides are preview-only and are never exported.</p>
+</section>
+
+<section>
+  <h2>Sprite sheet (384 x 320, transparent)</h2>
+  <div class="controls">
+    <label>Zoom
+      <select id="zoom"><option value="1">1x</option><option value="2" selected>2x</option></select>
+    </label>
+    <label><input type="checkbox" id="grid" checked> Show 64 px cell grid</label>
+    <button id="dlSheet">Download sprite sheet PNG</button>
+  </div>
+  <div id="sheetScroll">
+    <div id="sheetWrap" class="checker">
+      <canvas id="sheet" width="384" height="320"></canvas>
+      <div id="gridOverlay"></div>
+    </div>
+  </div>
+  <p class="note" style="margin-top:8px">
+    Source rectangle for any frame: <code>sourceX = frameIndex * 64</code>, <code>sourceY = animationRow * 64</code>, size 64 x 64.
+    Unused cells are transparent.
+  </p>
+  <table class="lay">
+    <thead><tr><th>Row</th><th>Animation</th><th>Frames</th><th>sourceY</th><th>sourceX per frame</th><th>Suggested playback</th></tr></thead>
+    <tbody id="layout"></tbody>
+  </table>
+  <pre id="report"></pre>
+</section>
+
+<section>
+  <h2>Animation preview at game scale (960 x 540)</h2>
+  <div class="controls">
+    <label>Animation
+      <select id="anim">
+        <option value="idle" selected>Idle (row 0, 4 frames)</option>
+        <option value="walk">Walk (row 1, 6 frames)</option>
+        <option value="attack">Attack (row 2, 6 frames)</option>
+        <option value="damage">Damage (row 3, 2 frames)</option>
+        <option value="death">Death (row 4, 6 frames)</option>
+      </select>
+    </label>
+    <button id="play">Pause</button>
+    <label><input type="checkbox" id="loop"> Loop</label>
+    <button id="prev">&larr; Frame</button>
+    <button id="next">Frame &rarr;</button>
+    <label>Speed <input type="range" id="fps" min="2" max="14" value="6"> <span id="fpsLabel">6 fps</span></label>
+    <label>Draw scale
+      <select id="scale">
+        <option value="1">1x (enemy 55 px tall)</option>
+        <option value="1.25" selected>1.25x (same scale as the player, enemy 69 px tall)</option>
+        <option value="1.5">1.5x</option>
+        <option value="2">2x</option>
+      </select>
+    </label>
+    <label><input type="checkbox" id="refbox" checked> Show 32 x 60 player-size box</label>
+  </div>
+  <canvas id="game" width="960" height="540"></canvas>
+  <p class="note" style="margin-top:8px">
+    Sprites are placed by their feet (frame y = 60) and anchor (frame x = 28), the same convention as the Knight-Errant.
+    The sprite faces right; mirror it in your game for left-facing, pivoting about the anchor (the anchor sits at x = 36 of the mirrored frame).
+    <span id="frameLabel"></span>
+  </p>
+</section>
+
+<script>
+(function(){
+'use strict';
+
+// ==== GENERATOR START ====
+
+const FRAME = 80;
+
+// Index 0 = transparent. 1-12 reuse the player's colour language; 13-14 are the enemy-only crimson glow.
+const HEX = [null,
+  '#0E0D10', // 1 outline
+  '#120D10', // 2 basalt b0
+  '#1C1417', // 3 basalt b1
+  '#2A2022', // 4 basalt b2
+  '#3C2E2C', // 5 basalt b3
+  '#4A4446', // 6 ash 0
+  '#6E6568', // 7 ash 1
+  '#968B8C', // 8 ash 2
+  '#4A0F0C', // 9 lava l0
+  '#8A1E10', // 10 lava l1
+  '#C23A14', // 11 lava l2
+  '#E2641E', // 12 lava l3
+  '#F59A3A', // 13 lava l4
+  '#FFD98A', // 14 white-hot
+  '#7A5C2A'  // 15 bronze
+];
+const C = {OUT:1, B0:2, B1:3, B2:4, B3:5, A0:6, A1:7, A2:8, L0:9, L1:10, L2:11, L3:12, L4:13, HOT:14, BRZ:15};
+const rad = d => d * Math.PI / 180;
+const TAU = Math.PI * 2;
+
+function makePainter(buf){
+  const set = (x, y, c) => {
+    x = Math.round(x); y = Math.round(y);
+    if (x < 0 || y < 0 || x >= FRAME || y >= FRAME) return;
+    buf[y * FRAME + x] = c;
+  };
+  const rect = (x, y, w, h, c) => { for (let j = 0; j < h; j++) for (let i = 0; i < w; i++) set(x + i, y + j, c); };
+  // Light from the upper left: top + left edges = hi, bottom + right edges = sh.
+  const box = (x, y, w, h, base, hi, sh, o) => {
+    o = o || {};
+    const outline = o.outline !== false, chamfer = !!o.chamfer;
+    if (outline) {
+      for (let j = -1; j <= h; j++) for (let i = -1; i <= w; i++) {
+        const corner = (i < 0 || i === w) && (j < 0 || j === h);
+        if (chamfer && corner) continue;
+        set(x + i, y + j, C.OUT);
+      }
+    }
+    rect(x, y, w, h, base);
+    for (let j = 0; j < h; j++) set(x, y + j, hi);
+    for (let i = 0; i < w; i++) set(x + i, y, hi);
+    for (let j = 1; j < h; j++) set(x + w - 1, y + j, sh);
+    for (let i = 1; i < w; i++) set(x + i, y + h - 1, sh);
+  };
+  return {set, rect, box};
+}
+
+function limbMask(pts, w){
+  const m = new Uint8Array(FRAME * FRAME);
+  for (let s = 0; s < pts.length - 1; s++) {
+    const x0 = pts[s][0], y0 = pts[s][1], x1 = pts[s+1][0], y1 = pts[s+1][1];
+    const n = Math.max(1, Math.ceil(Math.hypot(x1 - x0, y1 - y0) * 2));
+    for (let k = 0; k <= n; k++) {
+      const sx = Math.round(x0 + (x1 - x0) * k / n - w / 2), sy = Math.round(y0 + (y1 - y0) * k / n - w / 2);
+      for (let j = 0; j < w; j++) for (let i = 0; i < w; i++) {
+        const px = sx + i, py = sy + j;
+        if (px >= 0 && py >= 0 && px < FRAME && py < FRAME) m[py * FRAME + px] = 1;
+      }
+    }
+  }
+  return m;
+}
+function paintMask(buf, m, base, hi, sh){
+  const at = (x, y) => (x < 0 || y < 0 || x >= FRAME || y >= FRAME) ? 0 : m[y * FRAME + x];
+  for (let y = 0; y < FRAME; y++) for (let x = 0; x < FRAME; x++) {
+    if (!at(x, y) && (at(x-1, y) || at(x+1, y) || at(x, y-1) || at(x, y+1))) buf[y * FRAME + x] = C.OUT;
+  }
+  for (let y = 0; y < FRAME; y++) for (let x = 0; x < FRAME; x++) {
+    if (!at(x, y)) continue;
+    let c = base;
+    if (!at(x, y-1) || !at(x-1, y)) c = hi;
+    else if (!at(x, y+1) || !at(x+1, y)) c = sh;
+    buf[y * FRAME + x] = c;
+  }
+}
+// Two-bone IK. bend 'x': joint bends toward +x (knee). bend 'y': toward +y (elbow).
+function ik(hx, hy, tx, ty, l1, l2, bend){
+  let dx = tx - hx, dy = ty - hy, d = Math.max(0.5, Math.hypot(dx, dy));
+  const max = l1 + l2 - 0.01;
+  if (d > max) { dx *= max / d; dy *= max / d; d = max; }
+  const a = (l1*l1 - l2*l2 + d*d) / (2 * d), h = Math.sqrt(Math.max(0, l1*l1 - a*a));
+  const ux = dx / d, uy = dy / d;
+  let px = -uy, py = ux;
+  if (bend === 'x' ? px < 0 : py < 0) { px = -px; py = -py; }
+  return {k: [hx + ux*a + px*h, hy + uy*a + py*h], a: [hx + dx, hy + dy]};
+}
+// 1 px near-black outline around the whole silhouette.
+function outlinePass(buf){
+  const out = buf.slice();
+  for (let y = 0; y < FRAME; y++) for (let x = 0; x < FRAME; x++) {
+    const i = y * FRAME + x;
+    if (buf[i] !== 0) continue;
+    const n = [x > 0 ? buf[i-1] : 0, x < FRAME-1 ? buf[i+1] : 0, y > 0 ? buf[i-FRAME] : 0, y < FRAME-1 ? buf[i+FRAME] : 0];
+    if (n.some(v => v !== 0 && v !== C.OUT)) out[i] = C.OUT;
+  }
+  buf.set(out);
+}
+
+
+function claw(buf, H, alpha, L, curl){
+  const set = (x, y, c) => { x = Math.round(x); y = Math.round(y); if (x >= 0 && y >= 0 && x < FRAME && y < FRAME) buf[y * FRAME + x] = c; };
+  let x = H[0], y = H[1]; const pts = [];
+  for (let s = 0; s < L; s += 0.5) {
+    const a = rad(alpha + curl * s);
+    x += Math.sin(a) * 0.5; y += Math.cos(a) * 0.5; pts.push([x, y, s, a]);
+  }
+  const occ = new Set(); const px = [];
+  pts.forEach(p => {
+    const w = p[2] < L * 0.6 ? 2 : 1;
+    const nx = Math.cos(p[3]), ny = -Math.sin(p[3]);
+    for (let k = 0; k < w; k++) {
+      const X = Math.round(p[0] + nx * (k - (w - 1) / 2) * 0.9), Y = Math.round(p[1] + ny * (k - (w - 1) / 2) * 0.9);
+      let c = k === 0 ? C.A2 : C.A1;
+      if (p[2] > L * 0.78) c = C.L3; if (p[2] > L * 0.93) c = C.L4;
+      px.push([X, Y, c]); occ.add(X + ',' + Y);
+    }
+  });
+  px.forEach(p => [[1,0],[-1,0],[0,1],[0,-1]].forEach(n => { if (!occ.has((p[0]+n[0]) + ',' + (p[1]+n[1]))) set(p[0]+n[0], p[1]+n[1], C.OUT); }));
+  px.forEach(p => set(p[0], p[1], p[2]));
+}
+
+// ---------------- glow helpers ----------------
+// g: -1 dead/cold, 0 faint, 1 normal, 2 bright, 3 flare
+function crackColour(g, i, len){
+  const mid = i === Math.floor(len / 2);
+  if (g < 0) return (i % 3 === 0) ? C.B0 : null;
+  if (g === 0) return (i % 3 === 0) ? C.L1 : C.L0;
+  if (g === 1) return mid ? C.L4 : ((i % 4 === 1) ? C.L3 : C.L2);
+  if (g === 2) return mid ? C.HOT : ((i % 3 === 0) ? C.L4 : C.L3);
+  return mid ? C.HOT : ((i % 2 === 0) ? C.L4 : C.L3);
+}
+function crack(P, x, y, len, seed, dir, g){
+  let s = seed, cx = x, cy = y;
+  const rnd = () => { s = (s * 1103515245 + 12345) & 0x7fffffff; return s / 0x7fffffff; };
+  for (let i = 0; i < len; i++) {
+    const c = crackColour(g, i, len);
+    if (c != null) P.set(cx, cy, c);
+    if (g >= 3 && i % 2 === 0) P.set(cx + 1, cy, C.L2);          // flare halo
+    const r = rnd();
+    cy += 1; cx += (r < 0.3 ? -1 : r > 0.7 ? 1 : 0) * dir;
+  }
+}
+// ragged cloth strip hanging from (x, y); sway < 0 trails backwards (to the left)
+function strip(P, x, y, w, len, sway, base, hi, tip){
+  for (let i = 0; i < len; i++) {
+    const dx = Math.round(sway * Math.pow(i / len, 1.4));
+    P.rect(x + dx, y + i, w, 1, base);
+    P.set(x + dx, y + i, hi);
+    if (i > len - 3 && i % 2 === 0) P.set(x + dx + w - 1, y + i, C.OUT);       // torn edge
+  }
+  P.set(x + Math.round(sway), y + len, tip);
+}
+function stalkerBoot(P, ax, ay, tilt, col){
+  const bx = Math.round(ax) - 3, y0 = Math.round(ay);
+  if (tilt === 0) { P.box(bx, y0, 9, 3, col[0], col[1], col[2]); P.set(bx + 9, y0 + 2, col[1]); }
+  else if (tilt > 0) { P.box(bx, y0 - 1, 4, 3, col[0], col[1], col[2]); P.box(bx + 4, y0, 5, 3, col[0], col[1], col[2]); P.set(bx + 9, y0 + 2, col[1]); }
+  else { P.box(bx, y0, 4, 3, col[0], col[1], col[2]); P.box(bx + 4, y0 - 1, 5, 3, col[0], col[1], col[2]); P.set(bx + 9, y0 + 1, col[1]); }
+}
+// orange claw-slash trail, restrained: thin crescent, fades toward its start
+function drawSlash(buf, H, a0, a1, rOut, rIn){
+  const n = Math.max(3, Math.ceil(Math.abs(a1 - a0) / 3));
+  for (let i = 0; i <= n; i++) {
+    const a = rad(a0 + (a1 - a0) * i / n), f = i / n;
+    const put = (r, c) => { const x = Math.round(H[0] + r * Math.sin(a)), y = Math.round(H[1] + r * Math.cos(a));
+      if (x >= 0 && y >= 0 && x < FRAME && y < FRAME) buf[y * FRAME + x] = c; };
+    if (f > 0.15 || i % 2 === 0) put(rOut, f > 0.8 ? C.L4 : (f > 0.4 ? C.L3 : C.L1));
+    if (f > 0.35) put(rIn, f > 0.8 ? C.L3 : C.L2);
+  }
+  const ea = rad(a1);
+  [[0, 0], [1, 0]].forEach(d => { const x = Math.round(H[0] + rOut * Math.sin(ea)) + d[0], y = Math.round(H[1] + rOut * Math.cos(ea)) + d[1];
+    if (x >= 0 && y >= 0 && x < FRAME && y < FRAME) buf[y * FRAME + x] = C.HOT; });
+}
+const ASH0 = [[26,40],[24,52],[22,30],[50,40],[54,48],[20,64],[48,66],[56,30],[28,18],[46,12],[18,44],[52,62],[30,66],[44,20]];
+function drawAsh(buf, ash){
+  if (!ash) return;
+  ASH0.forEach((p, k) => {
+    const age = (ash.i + k) % ash.n; if (age > 3) return;
+    const x = Math.round(p[0] + ash.dx * age), y = Math.round(p[1] + ash.dy * age);
+    if (x < 1 || y < 1 || x >= FRAME - 1 || y >= 74) return;
+    if (buf[y * FRAME + x] !== 0) return;                               // only in empty air
+    const ember = k % 4 === 0;
+    buf[y * FRAME + x] = ember ? [C.L3, C.L2, C.L1, C.L0][age] : [C.A1, C.A0, C.A0, C.B3][age];
+  });
+}
+
+// ---------------- the Ashen Stalker ----------------
+function drawStalker(buf, o){
+  const P = makePainter(buf), set = P.set, rect = P.rect, box = P.box;
+  const px = o.px || 0, py = o.py || 0, X = px + (o.cx || 0), Y = py + (o.cy || 0), HX = X + (o.hx || 0), HY = Y + (o.hy || 0);
+  const g = o.glow == null ? 1 : o.glow;
+  const cl = o.claws || [38, 22, 6], cL = o.clawLen || [20, 22, 19];
+
+  // far arm (behind the body)
+  { const s = [31 + X, 36 + Y], r = ik(s[0], s[1], o.armF[0], o.armF[1], 12, 13, 'y');
+    paintMask(buf, limbMask([s, r.k, r.a], 4), C.B1, C.B3, C.OUT);
+    box(Math.round(r.a[0]) - 3, Math.round(r.a[1]) - 2, 6, 5, C.B2, C.B3, C.B0);
+    claw(buf, [r.a[0] + 1, r.a[1] + 2], o.clawF == null ? 6 : o.clawF, 13, 0.5); }
+
+  // legs
+  [{hx: 35, f: o.far, far: true}, {hx: 39, f: o.near, far: false}].forEach(L => {
+    const hipX = L.hx + px, hipY = 51 + py;
+    const r = ik(hipX, hipY, L.f.ax, L.f.ay - 1, 13, 13.5, 'x');
+    const col = L.far ? [C.B0, C.B1, C.OUT] : [C.B3, C.A0, C.B1];
+    paintMask(buf, limbMask([[hipX, hipY], r.k, r.a], 4), col[0], col[1], col[2]);
+    box(Math.round(r.k[0]) - 1, Math.round(r.k[1]) - 2, 5, 4, C.B3, C.A0, C.B1, {outline: false});
+    set(r.k[0] + 4, r.k[1], C.A1);
+    stalkerBoot(P, r.a[0], L.f.ay, L.f.t || 0, col);
+    if (!L.far) crack(P, Math.round(r.k[0]), Math.round(r.k[1]) + 3, 7, 11, 1, g);
+  });
+
+  // ragged burnt cloth (loincloth strips) - sways, trails when moving
+  const sw = o.cloth || 0;
+  strip(P, 33 + px, 52 + py, 3, 10, sw, C.B2, C.B3, C.L1);
+  strip(P, 38 + px, 52 + py, 3, 7, sw * 0.8, C.B1, C.B2, C.L0);
+  // pelvis, torso
+  box(33 + px, 46 + py, 9, 6, C.B1, C.B3, C.B0);
+  box(32 + X, 30 + Y, 11, 17, C.B1, C.B3, C.B0);
+  [33, 36, 39].forEach(y => rect(33 + X, y + Y, 9, 1, C.B0));
+  rect(37 + X, 31 + Y, 1, 14, C.B2);
+  crack(P, 34 + X, 31 + Y, 12, 5, 1, g); crack(P, 40 + X, 34 + Y, 9, 9, -1, g); crack(P, 36 + px, 47 + py, 4, 3, 1, g);
+  // far pauldron
+  box(27 + X, 29 + Y, 6, 4, C.B2, C.B3, C.B0, {chamfer: true}); set(28 + X, 28 + Y, C.B3); set(28 + X, 27 + Y, C.B2); set(30 + X, 28 + Y, C.B3);
+  // head: swept-back blade crest, forward beak, eye slit
+  const hs = (x, y, c) => set(x + HX, y + HY, c), hr = (x, y, w, h, c) => rect(x + HX, y + HY, w, h, c);
+  hr(36, 27, 5, 4, C.B0);
+  box(34 + HX, 15 + HY, 10, 13, C.B1, C.B3, C.B0, {chamfer: true});
+  for (let i = 0; i < 12; i++) {
+    const x = 36 - i, y = 15 - Math.floor(i * 0.7), w = Math.max(1, 3 - Math.floor(i / 4));
+    for (let k = 0; k < w; k++) hs(x, y - k, i < 2 ? C.B1 : C.B2);
+    hs(x, y + 1, C.OUT);
+  }
+  hs(24, 9, C.A1);
+  for (let r = 0; r < 6; r++) hr(44, 19 + r, 6 - Math.abs(r - 2) * 2, 1, r === 2 ? C.B3 : C.B1);
+  hr(38, 20, 7, 1, C.OUT);
+  if (g >= 0) {
+    if (g === 0) { hr(41, 20, 2, 1, C.L2); }
+    else if (g === 1) { hr(40, 20, 4, 1, C.L3); hr(41, 20, 2, 1, C.HOT); hs(39, 20, C.L2); }
+    else if (g === 2) { hr(40, 20, 4, 1, C.L4); hr(40, 20, 3, 1, C.HOT); hs(39, 20, C.L3); hs(44, 20, C.L3); }
+    else { hr(39, 20, 6, 1, C.HOT); hr(40, 19, 4, 1, C.L2); hr(40, 21, 4, 1, C.L2); hs(38, 20, C.L4); }
+  }
+  crack(P, 36 + HX, 16 + HY, 7, 14, 1, g);
+  hr(36, 23, 1, 4, C.B0); hr(39, 24, 1, 3, C.B0);
+  // near pauldron
+  box(40 + X, 30 + Y, 9, 5, C.B2, C.B3, C.B0, {chamfer: true});
+  set(43 + X, 29 + Y, C.B3); set(43 + X, 28 + Y, C.B2); set(43 + X, 27 + Y, C.A0); set(47 + X, 29 + Y, C.B3); set(47 + X, 28 + Y, C.A0);
+  rect(41 + X, 33 + Y, 7, 1, C.B0); set(44 + X, 31 + Y, g < 0 ? C.B0 : C.L2); set(45 + X, 32 + Y, g < 0 ? C.B0 : C.L1);
+  // near arm with the three claws
+  { const s = [44 + X, 36 + Y], r = ik(s[0], s[1], o.armN[0], o.armN[1], 12, 13, 'y');
+    paintMask(buf, limbMask([s, r.k, r.a], 4), C.B2, C.B3, C.B0);
+    crack(P, Math.round(r.k[0]), Math.round(r.k[1]) - 1, 5, 21, 1, g);
+    const H = r.a;
+    if (o.slash) drawSlash(buf, [H[0] + 1, H[1] + 1], o.slash[0], o.slash[1], o.slash[2], o.slash[3]);
+    claw(buf, [H[0] + 1, H[1] + 1], cl[0], cL[0], 1.0);
+    claw(buf, [H[0], H[1] + 1], cl[1], cL[1], 0.9);
+    claw(buf, [H[0] - 1, H[1] + 1], cl[2], cL[2], 0.8);
+    box(Math.round(H[0]) - 3, Math.round(H[1]) - 2, 7, 6, C.B1, C.B3, C.B0);
+    set(H[0], H[1], g < 0 ? C.B0 : C.L3);
+    if (o.sparks) o.sparks.forEach(p => { set(p[0], p[1], C.HOT); }); }
+  drawAsh(buf, o.ash);
+}
+
+function rotateBuf(src, deg, pivot, dest){
+  const a = rad(deg), ca = Math.cos(a), sa = Math.sin(a), out = new Uint8Array(FRAME * FRAME);
+  for (let y = 0; y < FRAME; y++) for (let x = 0; x < FRAME; x++) {
+    const rx = x - dest[0], ry = y - dest[1];
+    const sx = Math.round(pivot[0] + rx * ca + ry * sa), sy = Math.round(pivot[1] - rx * sa + ry * ca);
+    if (sx >= 0 && sy >= 0 && sx < FRAME && sy < FRAME) out[y * FRAME + x] = src[sy * FRAME + sx];
+  }
+  return out;
+}
+
+function renderStalker(o){
+  let buf = new Uint8Array(FRAME * FRAME);
+  if (o.rot) {                                                          // collapse: draw upright, then topple about the hips
+    drawStalker(buf, o);
+    buf = rotateBuf(buf, o.rot[0], [39 + (o.px || 0), 51 + (o.py || 0)], [o.rot[1], o.rot[2]]);
+    drawAsh(buf, o.ash);
+  } else drawStalker(buf, o);
+  buf.fill(0, 75 * FRAME);                                              // nothing below the ground line (feet end at y = 74, outline y = 75)
+  outlinePass(buf);
+  return buf;
+}
+
+// ---------------- animation data ----------------
+const NEAR_I = {ax: 42, ay: 72, t: 0}, FAR_I = {ax: 31, ay: 72, t: 0};      // idle stance (ankle = top of boot)
+const ash = (i, n, dx, dy) => ({i: i, n: n, dx: dx, dy: dy});
+
+// IDLE 6: breathing, cracks glow softly with one brighter pulse, cloth and claws sway, ash rises.
+const IDLE = [0, 1, 2, 3, 4, 5].map(i => ({
+  py: 0, cy: [0, 0, 1, 1, 1, 0][i], hy: [0, 0, 0, 1, 0, 0][i], cx: 0, hx: [0, 0, 1, 1, 0, 0][i],
+  glow: [1, 1, 2, 3, 2, 1][i], near: NEAR_I, far: FAR_I,
+  armN: [52, 52 + [0, 0, 1, 1, 1, 0][i]], claws: [38 + [0, 1, 2, 2, 1, 0][i], 22 + [0, 1, 2, 2, 1, 0][i], 6 + [0, 1, 2, 2, 1, 0][i]],
+  armF: [28, 56 + [0, 0, 1, 1, 1, 0][i]], cloth: [0, 1, 1, 0, -1, -1][i], ash: ash(i, 6, 0, -1.2)
+}));
+
+// WALK 8: forward-leaning stalking stride, claws swing opposite the legs, cloth trails.
+function gait(phase, S, L, st){
+  if (phase < st) return {x: S - 2 * S * (phase / st), lift: 0, u: -1};
+  const u = (phase - st) / (1 - st);
+  return {x: -S + 2 * S * u, lift: L * Math.sin(Math.PI * u), u: u};
+}
+function tilt(g){ if (g.u < 0) return 0; if (g.u < 0.3) return 1; if (g.u >= 0.7) return -1; return 0; }
+const WALK = [0, 1, 2, 3, 4, 5, 6, 7].map(i => {
+  const a = i / 8 * TAU, c = Math.cos(a);
+  const foot = ph => { const g = gait(ph, 6, 5, 0.5); return {ax: 36 + g.x, ay: 72 - g.lift, t: tilt(g)}; };
+  return {
+    py: [1, 1, 0, 0, 1, 1, 0, 0][i], cx: 2, cy: 1, hx: 2, glow: 1,
+    near: foot(i / 8), far: foot(((i + 4) % 8) / 8),
+    armN: [50 - 4 * c, 51 - 1.5 * c], claws: [38 - 9 * c, 22 - 9 * c, 6 - 9 * c],
+    armF: [28 + 5 * c, 56], clawF: 6 + 6 * c, cloth: -3 + 1.5 * Math.sin(a), ash: ash(i, 8, -1.6, -0.5)
+  };
+});
+
+// RUN 8: aggressive lean, long strides with two airborne frames, claws thrust forward, cloth and ash stream back.
+function runFoot(phase){
+  const S = 9, st = 0.42;
+  if (phase < st) return {x: S - 2 * S * (phase / st), lift: 0, u: -1};
+  const u = (phase - st) / (1 - st);
+  return {x: -S + 2 * S * u, lift: 9 * Math.sin(Math.PI * u), u: u};
+}
+const RUN_AIR = [0, 0, 0, 1, 0, 0, 0, 1];
+const RUN = [0, 1, 2, 3, 4, 5, 6, 7].map(i => {
+  const a = i / 8 * TAU, c = Math.cos(a);
+  const foot = (ph, stance) => { const g = runFoot(ph); let lift = g.lift, t = tilt(g);
+    if (g.u < 0 && RUN_AIR[i] && stance) { lift = 3; t = 1; }
+    return {ax: 35 + g.x, ay: 72 - lift, t: t}; };
+  const ng = runFoot(i / 8), fg = runFoot(((i + 4) % 8) / 8);
+  return {
+    py: [3, 3, 1, -1, 3, 3, 1, -1][i] + 1, cx: 4, cy: 2, hx: 3, glow: 1,
+    near: foot(i / 8, ng.u < 0), far: foot(((i + 4) % 8) / 8, fg.u < 0),
+    armN: [47 - 6 * c, 48 + 4 * c], claws: [38 - 20 * c, 22 - 20 * c, 6 - 20 * c],
+    armF: [28 + 6 * c, 55 - 3 * c], clawF: 6 + 14 * c, cloth: -7 + 2 * Math.sin(a), ash: ash(i, 8, -4, -0.4)
+  };
+});
+
+// ATTACK 6: crouch and coil, claws raised, strike begins, HIT (slash + flare), follow-through, recovery.
+const ATTACK = [
+  {py: 3, cx: -2, cy: 1, hx: -1, glow: 1, near: {ax: 43, ay: 72, t: 0}, far: {ax: 29, ay: 72, t: 0},
+   armN: [42, 54], claws: [-40, -55, -70], armF: [29, 56], cloth: -1, ash: ash(0, 6, -1, 0)},
+  {py: 3, px: -1, cx: -4, cy: 1, hx: -2, glow: 2, near: {ax: 42, ay: 72, t: 0}, far: {ax: 27, ay: 72, t: 0},
+   armN: [38, 36], claws: [-150, -165, 180], armF: [27, 52], clawF: -20, cloth: 1, ash: ash(1, 6, -1, -1)},
+  {py: 3, px: 2, cx: 2, cy: 2, hx: 2, glow: 2, near: {ax: 45, ay: 72, t: 0}, far: {ax: 28, ay: 72, t: 1},
+   armN: [50, 36], claws: [150, 135, 120], armF: [28, 54], cloth: -3, slash: [215, 160, 17, 13], ash: ash(2, 6, -1, -1)},
+  {py: 4, px: 4, cx: 4, cy: 3, hx: 4, glow: 3, near: {ax: 47, ay: 72, t: 0}, far: {ax: 27, ay: 72, t: 1},
+   armN: [55, 49], claws: [84, 70, 56], clawLen: [19, 20, 18], armF: [30, 54], cloth: -5,
+   slash: [158, 62, 19, 15], sparks: [[73, 60], [75, 57], [70, 64], [76, 62]], ash: ash(3, 6, -2, -1)},
+  {py: 4, px: 4, cx: 4, cy: 3, hx: 3, glow: 2, near: {ax: 47, ay: 72, t: 0}, far: {ax: 28, ay: 72, t: 1},
+   armN: [57, 54], claws: [40, 26, 12], armF: [30, 55], cloth: -4, ash: ash(4, 6, -2, -0.5)},
+  {py: 1, px: 1, cx: 1, cy: 1, hx: 1, glow: 1, near: {ax: 43, ay: 72, t: 0}, far: {ax: 31, ay: 72, t: 0},
+   armN: [52, 53], claws: [38, 22, 6], armF: [28, 56], cloth: -1, ash: ash(5, 6, -1, -0.5)}
+];
+
+// DAMAGE 3: hit recoil with the molten cracks flaring, stagger, recover.
+const DAMAGE = [
+  {py: 0, px: -2, cx: -2, cy: 0, hx: -3, glow: 3, near: {ax: 41, ay: 72, t: 0}, far: {ax: 30, ay: 72, t: 0},
+   armN: [47, 49], claws: [10, -6, -22], armF: [24, 55], clawF: -10, cloth: 2, ash: ash(0, 3, 2, -1)},
+  {py: 2, px: -4, cx: -2, cy: 1, hx: -4, glow: 3, near: {ax: 39, ay: 72, t: 0}, far: {ax: 27, ay: 70, t: 1},
+   armN: [44, 48], claws: [0, -16, -32], armF: [22, 52], clawF: -25, cloth: 3, ash: ash(1, 3, 2, -1)},
+  {py: 1, px: -2, cx: 0, cy: 1, hx: 0, glow: 2, near: {ax: 41, ay: 72, t: 0}, far: {ax: 30, ay: 72, t: 0},
+   armN: [50, 51], claws: [28, 12, -4], armF: [26, 56], cloth: 1, ash: ash(2, 3, 1, -1)}
+];
+
+// DEATH 6: struck, buckles, kneels, topples, lies still, final settled pose (cracks cold, glow gone).
+const DEATH = [
+  {py: 0, px: -3, cx: -3, cy: 0, hx: -4, glow: 3, near: {ax: 40, ay: 72, t: 0}, far: {ax: 29, ay: 72, t: 0},
+   armN: [45, 46], claws: [-5, -21, -37], armF: [22, 54], clawF: -20, cloth: 3, ash: ash(0, 6, 1, -1)},
+  {py: 6, px: -3, cx: -2, cy: 2, hx: 0, hy: 2, glow: 2, near: {ax: 43, ay: 72, t: 0}, far: {ax: 28, ay: 72, t: 0},
+   armN: [47, 56], claws: [15, 0, -15], armF: [26, 58], cloth: 1, ash: ash(1, 6, 0, 1)},
+  {py: 10, px: -1, cx: 2, cy: 3, hx: 2, hy: 3, glow: 1, near: {ax: 47, ay: 72, t: 0}, far: {ax: 24, ay: 72, t: 0},
+   armN: [50, 61], claws: [30, 16, 2], armF: [28, 62], cloth: 0, ash: ash(2, 6, 0, 1)},
+  {py: 10, px: -1, cx: 3, cy: 4, hx: 3, hy: 4, glow: 0, near: {ax: 47, ay: 72, t: 0}, far: {ax: 24, ay: 72, t: 0},
+   armN: [52, 62], claws: [40, 26, 12], armF: [28, 62], cloth: 0, rot: [28, 38, 63], ash: ash(3, 6, 0, 1)},
+  {py: 10, px: -1, cx: 3, cy: 4, hx: 3, hy: 4, glow: 0, near: {ax: 47, ay: 72, t: 0}, far: {ax: 24, ay: 72, t: 0},
+   armN: [52, 62], claws: [40, 26, 12], armF: [28, 62], cloth: 0, rot: [62, 37, 66], ash: ash(4, 6, 0, 1)},
+  {py: 10, px: -1, cx: 3, cy: 4, hx: 3, hy: 4, glow: -1, near: {ax: 47, ay: 72, t: 0}, far: {ax: 24, ay: 72, t: 0},
+   armN: [52, 62], claws: [40, 26, 12], armF: [28, 62], cloth: 0, rot: [90, 36, 67]}
+];
+const POSE_SETS = {idle: IDLE, walk: WALK, run: RUN, attack: ATTACK, damage: DAMAGE, death: DEATH};
+
+// ==== GENERATOR END ====
+
+
+// ---------- sheet layout: 6 columns x 5 rows of 64 x 64 cells = 384 x 320 ----------
+const SHEET_W = 640, SHEET_H = 480;
+const NAMES = ['Outline','Basalt b0','Basalt b1','Basalt b2','Basalt b3','Ash 0','Ash 1','Ash 2','Lava l0','Lava l1','Lava l2','Lava l3','Lava l4','White-hot','Aged bronze'];
+const SHARED = [1,0,0,0,0,0,0,0,0,0,0,0,0,0,1];
+const RGB = HEX.map(h => h ? [1,3,5].map(i => parseInt(h.slice(i, i + 2), 16)) : null);
+
+const ANIMS = {
+  idle:   {label: 'Idle',   row: 0, count: 6, fps: 8,  loop: true},
+  walk:   {label: 'Walk',   row: 1, count: 8, fps: 10, loop: true},
+  run:    {label: 'Run',    row: 2, count: 8, fps: 14, loop: true},
+  attack: {label: 'Attack', row: 3, count: 6, fps: 14, loop: false},
+  damage: {label: 'Damage', row: 4, count: 3, fps: 10, loop: false},
+  death:  {label: 'Death',  row: 5, count: 6, fps: 8,  loop: false}
+};
+Object.keys(ANIMS).forEach(k => {
+  const a = ANIMS[k]; a.idx = 0; a.playing = true; a.last = 0;
+  a.frames = POSE_SETS[k].map(renderStalker);
+});
+let cur = 'idle';
+
+function toImageData(buf){
+  const img = new ImageData(FRAME, FRAME);
+  for (let i = 0; i < buf.length; i++) {
+    const c = buf[i];
+    if (!c) continue;
+    img.data[i*4] = RGB[c][0]; img.data[i*4+1] = RGB[c][1]; img.data[i*4+2] = RGB[c][2]; img.data[i*4+3] = 255;
+  }
+  return img;
+}
+const $ = id => document.getElementById(id);
+const sheet = $('sheet'), sctx = sheet.getContext('2d');
+sctx.clearRect(0, 0, SHEET_W, SHEET_H);
+Object.keys(ANIMS).forEach(k => {
+  const a = ANIMS[k];
+  a.frames.forEach((b, i) => sctx.putImageData(toImageData(b), i * FRAME, a.row * FRAME));
+});
+
+// ---------- palette ----------
+$('palette').innerHTML = NAMES.map((n, i) =>
+  '<div class="sw"><i style="background:' + HEX[i+1] + '"></i>' + n + '<br>' + HEX[i+1] + (SHARED[i] ? ' (shared with player)' : '') + '</div>').join('');
+
+// ---------- layout table + report ----------
+(function(){
+  let rows = '', lines = [], total = 0, problems = 0;
+  const used = new Set();
+  Object.keys(ANIMS).forEach(k => {
+    const a = ANIMS[k], xs = [];
+    a.frames.forEach((b, f) => {
+      let x0 = 80, x1 = -1, y0 = 80, y1 = -1;
+      for (let y = 0; y < 80; y++) for (let x = 0; x < 80; x++) {
+        const c = b[y*80 + x]; if (!c) continue;
+        used.add(c);
+        if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y;
+      }
+      const clip = x0 < 1 || x1 > 78 || y0 < 1 || y1 > 75;
+      if (clip) problems++;
+      total++;
+      xs.push(f * 80);
+      lines.push(a.label.padEnd(6) + ' f' + f + '  sourceX ' + String(f*80).padStart(3) + '  sourceY ' + String(a.row*80).padStart(3) +
+        '  bbox x ' + String(x0).padStart(2) + '-' + x1 + ', y ' + String(y0).padStart(2) + '-' + y1 +
+        (clip ? '  CLIPPING' : (y1 >= 75 ? '  on ground' : '  airborne')));
+    });
+    rows += '<tr><td>' + a.row + '</td><td>' + a.label + '</td><td>' + a.count + '</td><td>' + (a.row * 80) + '</td><td>' +
+            xs.join(', ') + '</td><td>' + a.fps + ' fps, ' + (a.loop ? 'loops' : 'plays once') + '</td></tr>';
+  });
+  $('layout').innerHTML = rows;
+  lines.push('');
+  lines.push('Frames: ' + total + ' of 37. Clipping problems: ' + problems + '. Sheet: ' + SHEET_W + ' x ' + SHEET_H + ' (8 columns x 6 rows of 80 x 80).');
+  lines.push('Palette: ' + used.size + ' of 15 colours used. Pixels are fully opaque or fully transparent.');
+  $('report').textContent = lines.join('\n');
+})();
+
+// ---------- sheet view ----------
+function updateSheetView(){
+  const z = +$('zoom').value;
+  sheet.style.width = SHEET_W * z + 'px';
+  sheet.style.height = SHEET_H * z + 'px';
+  const cell = FRAME * z, ov = $('gridOverlay');
+  if ($('grid').checked) {
+    ov.style.backgroundImage =
+      'linear-gradient(to right, rgba(184,146,63,.5) 1px, transparent 1px),' +
+      'linear-gradient(to bottom, rgba(184,146,63,.5) 1px, transparent 1px)';
+    ov.style.backgroundSize = cell + 'px ' + cell + 'px';
+  } else ov.style.backgroundImage = 'none';
+}
+$('zoom').onchange = updateSheetView;
+$('grid').onchange = updateSheetView;
+updateSheetView();
+
+// ---------- concept / base pose view (idle frame 0) ----------
+const base = $('base'), bctx = base.getContext('2d');
+function drawBase(){
+  bctx.imageSmoothingEnabled = false;
+  bctx.clearRect(0, 0, 640, 640);
+  bctx.drawImage(sheet, 0, 0, FRAME, FRAME, 0, 0, 640, 640);
+  if ($('guides').checked) {
+    bctx.lineWidth = 1;
+    bctx.strokeStyle = '#D9BC73'; bctx.beginPath(); bctx.moveTo(0, 608.5); bctx.lineTo(640, 608.5); bctx.stroke();   // baseline y = 60
+    bctx.strokeStyle = '#862235'; bctx.beginPath(); bctx.moveTo(292.5, 0); bctx.lineTo(292.5, 640); bctx.stroke();   // anchor x = 28
+    bctx.strokeStyle = 'rgba(160,159,164,.5)'; bctx.strokeRect(0.5, 0.5, 639, 639);
+  }
+}
+$('guides').onchange = drawBase;
+drawBase();
+
+// ---------- export ----------
+function download(canvas, name){
+  canvas.toBlob(function(blob){
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob); a.download = name;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(function(){ URL.revokeObjectURL(a.href); }, 1000);
+  }, 'image/png');
+}
+$('dlSheet').onclick = function(){ download(sheet, 'ashen_stalker_spritesheet.png'); };
+$('dlBase').onclick = function(){
+  const c = document.createElement('canvas'); c.width = c.height = FRAME;
+  c.getContext('2d').putImageData(toImageData(ANIMS.idle.frames[0]), 0, 0);
+  download(c, 'ashen_stalker_base_pose.png');
+};
+
+// ---------- game-scale preview ----------
+const game = $('game'), gx = game.getContext('2d');
+const GROUND = 470, CX = 480;
+function drawGame(){
+  const a = ANIMS[cur], s = +$('scale').value;
+  gx.imageSmoothingEnabled = false;
+  const g = gx.createLinearGradient(0, 0, 0, 540);
+  g.addColorStop(0, '#17161B'); g.addColorStop(1, '#25242A');
+  gx.fillStyle = g; gx.fillRect(0, 0, 960, 540);
+  gx.fillStyle = '#0E0D10'; gx.fillRect(0, GROUND, 960, 540 - GROUND);
+  gx.fillStyle = '#3B3A42'; gx.fillRect(0, GROUND, 960, 2);
+  // sourceX = frameIndex * 80, sourceY = animationRow * 80; placed by feet (y 76) and anchor (x 36)
+  const dx = Math.round(CX - 36 * s), dy = Math.round(GROUND - 76 * s);
+  gx.drawImage(sheet, a.idx * FRAME, a.row * FRAME, FRAME, FRAME, dx, dy, FRAME * s, FRAME * s);
+  if ($('refbox').checked) {
+    gx.save(); gx.strokeStyle = '#B8923F'; gx.setLineDash([5, 4]); gx.lineWidth = 1;
+    gx.strokeRect(CX - 16 + .5, GROUND - 60 + .5, 31, 59); gx.restore();
+    gx.fillStyle = '#6E6D74'; gx.font = '12px system-ui,sans-serif';
+    gx.fillText('player size 32 x 60', CX + 24, GROUND - 66);
+  }
+  gx.fillStyle = '#D9BC73'; gx.font = '600 22px Georgia,serif'; gx.fillText(a.label.toUpperCase(), 24, 38);
+  gx.fillStyle = '#A09FA4'; gx.font = '16px system-ui,sans-serif';
+  gx.fillText('frame ' + (a.idx + 1) + ' / ' + a.count + (a.loop ? '  (loops)' : '  (plays once)') + '  -  ' + a.fps + ' fps', 24, 62);
+  $('frameLabel').textContent = a.label + ': frame ' + a.idx + ' of ' + (a.count - 1) +
+    ' (sourceX ' + a.idx * FRAME + ', sourceY ' + a.row * FRAME + ').';
+}
+function syncControls(){
+  const a = ANIMS[cur];
+  $('anim').value = cur; $('fps').value = a.fps; $('fpsLabel').textContent = a.fps + ' fps'; $('loop').checked = a.loop;
+  $('play').textContent = a.playing ? 'Pause' : (!a.loop && a.idx === a.count - 1 ? 'Replay' : 'Play');
+  drawGame();
+}
+$('anim').onchange = function(){ cur = this.value; syncControls(); };
+$('loop').onchange = function(){ ANIMS[cur].loop = this.checked; };
+$('scale').onchange = drawGame;
+$('refbox').onchange = drawGame;
+$('fps').oninput = function(){ ANIMS[cur].fps = +this.value; $('fpsLabel').textContent = this.value + ' fps'; };
+$('play').onclick = function(){
+  const a = ANIMS[cur];
+  if (!a.playing && !a.loop && a.idx === a.count - 1) a.idx = 0;
+  a.playing = !a.playing; a.last = 0; syncControls();
+};
+$('prev').onclick = function(){ const a = ANIMS[cur]; a.playing = false; a.idx = (a.idx + a.count - 1) % a.count; syncControls(); };
+$('next').onclick = function(){ const a = ANIMS[cur]; a.playing = false; a.idx = (a.idx + 1) % a.count; syncControls(); };
+function tick(t){
+  let dirty = false;
+  Object.keys(ANIMS).forEach(k => {
+    const a = ANIMS[k];
+    if (!a.playing) return;
+    if (!a.last) a.last = t;
+    const step = 1000 / a.fps;
+    if (t - a.last >= step) {
+      let n = a.idx + Math.floor((t - a.last) / step);
+      a.last = t - ((t - a.last) % step);
+      if (n >= a.count) {
+        if (a.loop) n %= a.count;
+        else { n = a.count - 1; a.playing = false; if (k === cur) $('play').textContent = 'Replay'; }
+      }
+      a.idx = n;
+      if (k === cur) dirty = true;
+    }
+  });
+  if (dirty) drawGame();
+  requestAnimationFrame(tick);
+}
+syncControls();
+requestAnimationFrame(tick);
+
+})();
+</script>
+</body>
+</html>
+</script>
+</body>
+</html>
