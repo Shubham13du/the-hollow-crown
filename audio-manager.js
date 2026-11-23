@@ -2,9 +2,9 @@
 /* THE HOLLOW CROWN — AUDIO MANAGER */
 
 const HC_AUDIO = {
-    menu: new Audio("sounds/menu-theme.mp3"),
-    exploration: new Audio("sounds/exploration-theme.mp3"),
-    deathSnow: new Audio("sounds/death-snow-theme.mp3"),
+    menu: new Audio("assets/sounds/menu-theme.mp3"),
+    exploration: new Audio("assets/sounds/exploration-theme.mp3"),
+    deathSnow: new Audio("assets/sounds/death-snow-theme.mp3"),
 
     current: null,
     volume: 0.35,
