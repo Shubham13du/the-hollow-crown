@@ -1,35 +1,76 @@
-/* THE HOLLOW CROWN — touch controls
-   Load after game.js, world2_fix.js and death_snow.js. */
+
+/* THE HOLLOW CROWN — touch controls + mobile checkpoint return */
 (() => {
   "use strict";
 
   const root = document.getElementById("mobileControls");
-  if (!root) return;
+  const canvas = document.getElementById("gameCanvas");
 
-  // `keys` and `attack` are declared by game.js as classic-script globals.
+  if (!root || !canvas) return;
+
   const held = new Map();
+
   const keyGroups = {
     left: ["a", "arrowleft"],
     right: ["d", "arrowright"],
     run: ["shift"],
     descend: ["s", "arrowdown"],
-    jump: [" ", "w"] ,
+    jump: [" ", "w"],
     interact: ["e"]
   };
 
   function setGroup(name, down) {
-    const group = keyGroups[name] || [];
-    for (const key of group) keys[key] = down;
+    for (const key of keyGroups[name] || []) {
+      keys[key] = down;
+    }
   }
 
   function clearAll() {
-    for (const name of Object.keys(keyGroups)) setGroup(name, false);
+    for (const name of Object.keys(keyGroups)) {
+      setGroup(name, false);
+    }
+    keys.j = false;
     held.clear();
   }
+
+  // MOBILE GAME OVER BUTTON
+  const returnButton = document.createElement("button");
+  returnButton.type = "button";
+  returnButton.className = "mobile-return-button";
+  returnButton.textContent = "TAP TO RETURN";
+  returnButton.hidden = true;
+  returnButton.setAttribute("aria-label", "Return to checkpoint");
+
+  root.appendChild(returnButton);
+
+  returnButton.addEventListener("click", (event) => {
+    event.preventDefault();
+
+    if (player.gameOver && typeof respawnAtCheckpoint === "function") {
+      respawnAtCheckpoint();
+    }
+  });
+
+  // Keep the button directly below the Game Over message.
+  function updateReturnButton() {
+    const visible = !!player.gameOver;
+    returnButton.hidden = !visible;
+
+    if (visible) {
+      const rect = canvas.getBoundingClientRect();
+      returnButton.style.left = `${rect.left + rect.width / 2}px`;
+      returnButton.style.top = `${rect.top + rect.height * 0.67}px`;
+    }
+
+    requestAnimationFrame(updateReturnButton);
+  }
+
+  requestAnimationFrame(updateReturnButton);
 
   function startAction(button, pointerId) {
     const action = button.dataset.action;
     if (!action) return;
+
     held.set(pointerId, action);
 
     if (action === "attack") {
@@ -37,8 +78,10 @@
       if (typeof attack === "function") attack();
       return;
     }
+
     if (action === "jump") {
       setGroup("jump", true);
+
       if (!player.gameOver && !player.levelComplete && player.grounded) {
         player.velocityY = player.jumpPower;
         player.grounded = false;
@@ -46,50 +89,65 @@
       }
       return;
     }
+
     if (action === "restart") {
-      if (player.gameOver) respawnAtCheckpoint();
-      else if (player.levelComplete) restartGame();
+      if (player.gameOver && typeof respawnAtCheckpoint === "function") {
+        respawnAtCheckpoint();
+      } else if (player.levelComplete) {
+        restartGame();
+      }
       return;
     }
+
     setGroup(action, true);
   }
 
   function endAction(pointerId) {
     const action = held.get(pointerId);
     if (!action) return;
+
     held.delete(pointerId);
 
-    // Keep a key down if another finger is still holding the same action.
     const stillHeld = [...held.values()].includes(action);
     if (stillHeld) return;
 
     if (action === "attack") keys.j = false;
-    else if (action === "jump") setGroup("jump", false);
     else setGroup(action, false);
   }
 
   root.querySelectorAll("[data-action]").forEach((button) => {
     button.addEventListener("pointerdown", (event) => {
       event.preventDefault();
-      if (button.setPointerCapture) button.setPointerCapture(event.pointerId);
+
+      if (button.setPointerCapture) {
+        button.setPointerCapture(event.pointerId);
+      }
+
       startAction(button, event.pointerId);
       button.classList.add("is-pressed");
     });
+
     const release = (event) => {
       event.preventDefault();
       endAction(event.pointerId);
       button.classList.remove("is-pressed");
     };
+
     button.addEventListener("pointerup", release);
     button.addEventListener("pointercancel", release);
+
     button.addEventListener("lostpointercapture", (event) => {
       endAction(event.pointerId);
       button.classList.remove("is-pressed");
     });
-    button.addEventListener("contextmenu", (event) => event.preventDefault());
+
+    button.addEventListener("contextmenu", (event) => {
+      event.preventDefault();
+    });
   });
 
   window.addEventListener("blur", clearAll);
+
   document.addEventListener("visibilitychange", () => {
     if (document.hidden) clearAll();
   });
