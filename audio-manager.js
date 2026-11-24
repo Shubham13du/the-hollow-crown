@@ -28,6 +28,11 @@ const HC_AUDIO = {
         if (promise) promise.catch(error => console.warn("Audio playback blocked:", error));
     },
 
+    unlockSfx() {
+        // Call from the Start Journey tap/click so mobile browsers allow Web Audio.
+        this.getAudioContext();
+    },
+
     getAudioContext() {
         const AudioContextClass = window.AudioContext || window.webkitAudioContext;
         if (!AudioContextClass) return null;

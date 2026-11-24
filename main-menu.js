@@ -33,6 +33,7 @@
     hidePanel();
 
     HC_AUDIO.play("exploration");
+    if (typeof HC_AUDIO.unlockSfx === "function") HC_AUDIO.unlockSfx();
 
     document.body.classList.add("game-started");
     menu.classList.add("menu-hidden");
