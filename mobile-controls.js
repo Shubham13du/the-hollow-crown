@@ -67,10 +67,8 @@
         cancelable: true
       }));
     } else if (throneEnding) {
-      // The throne epilogue intentionally leaves levelComplete false so
-      // players can continue toward Death Snow. Restart explicitly here.
-      restartGame();
-      endingSequence.active = false;
+      // Dismiss only the epilogue overlay. Preserve World II progress so
+      // touch players can continue toward the Death Snow gate.
       endingSequence.finished = false;
       endingSequence.timer = 0;
     }
@@ -90,19 +88,14 @@
       const rect = canvas.getBoundingClientRect();
 
       returnButton.hidden = false;
-      returnButton.textContent = throneEnding ? "PLAY AGAIN" : "TAP TO RETURN";
+      returnButton.textContent = throneEnding ? "CONTINUE" : "TAP TO RETURN";
       returnButton.style.left =
         `${rect.left + rect.width / 2}px`;
       returnButton.style.top =
         `${rect.top + rect.height * 0.64}px`;
 
-      if (throneEnding) {
-        root.style.visibility = "hidden";
-        root.style.pointerEvents = "none";
-      } else {
-        root.style.visibility = "";
-        root.style.pointerEvents = "";
-      }
+      root.style.visibility = "";
+      root.style.pointerEvents = "";
     } else {
       returnButton.hidden = true;
       root.style.visibility = "";
