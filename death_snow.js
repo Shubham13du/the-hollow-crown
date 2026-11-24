@@ -880,18 +880,29 @@ function dsUpdateBossAI(b) {
             dsBurst(b.x+b.width/2,b.y+70,35,"ice");
         }
 
-        if(b.attackCooldown<=0) {
+        // Projectile and close-range attacks use independent cooldowns.
+        // The old shared cooldown was reset by the projectile branch, making
+        // the melee branch unreachable.
+        b.projectileCooldown = Math.max(0,(b.projectileCooldown ?? 70)-1);
+        b.meleeCooldown = Math.max(0,(b.meleeCooldown ?? 35)-1);
+
+        if(b.projectileCooldown<=0 && dist<900) {
             dsBossProjectile(
                 b,b.x+b.width/2,b.y+75,
                 Math.sign(dx)*(b.phase===2?5.5:4),
                 b.phase===2?-0.8:0
             );
-            b.attackCooldown=b.phase===2?85:110;
+            b.projectileCooldown=b.phase===2?78:105;
         }
 
-        if(dist<145 && b.attackCooldown<=0) {
-            damagePlayer(10);
-            b.attackCooldown=100;
+        if(dist<155 && b.meleeCooldown<=0 &&
+           Math.abs((player.y+player.height)-(b.y+b.height))<100) {
+            damagePlayer(12);
+            player.velocityX=b.facing*6;
+            player.velocityY=-4.5;
+            b.meleeCooldown=b.phase===2?78:100;
+            dsBurst(player.x+player.width/2,player.y+24,18,"ice");
+            showNotification("THE SNOW GOD STRIKES");
         }
     }
 
@@ -920,7 +931,17 @@ damageEnemy = function(enemy) {
         enemy.state!=="death" &&
         enemy.state!=="dead";
 
-    dsBaseDamageEnemy(enemy);
+    // The Ancient Winter Weapon is a combat weapon, not only a gate key.
+    // Against the Snow God each successful sword hit deals three damage.
+    if(enemy.deathSnowType==="snowgod" &&
+       deathSnowState.ancientWeaponCollected) {
+        for(let strike=0;strike<3;strike++) {
+            if(enemy.state==="death" || enemy.state==="dead") break;
+            dsBaseDamageEnemy(enemy);
+        }
+    } else {
+        dsBaseDamageEnemy(enemy);
+    }
 
     if(wasAlive && enemy.state==="death") {
         if(enemy.deathSnowBoss) {
