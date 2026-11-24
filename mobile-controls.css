@@ -98,51 +98,35 @@
 
 /* MOBILE GAME OVER — CHECKPOINT RETURN */
 
+
 .mobile-return-button {
-  display: none;
+  display: none !important;
 }
 
 @media (pointer: coarse), (max-width: 760px) {
-  .mobile-return-button {
-    display: block;
-    position: fixed;
-    z-index: 1100;
+  body > .mobile-return-button:not([hidden]) {
+    display: block !important;
+    position: fixed !important;
+    z-index: 2000 !important;
+
+    left: 50%;
+    top: 50%;
 
     transform: translate(-50%, -50%);
 
-    min-width: 190px;
+    width: 190px;
     min-height: 48px;
-    padding: 12px 22px;
 
-    border: 1px solid rgba(234, 211, 155, .9);
+    border: 1px solid #ead39b;
     border-radius: 5px;
 
-    background: linear-gradient(
-      110deg,
-      rgba(92, 67, 38, .96),
-      rgba(25, 27, 35, .97)
-    );
-
+    background: rgba(30, 25, 22, .97);
     color: #ead39b;
+
     font: 700 12px Cinzel, Georgia, serif;
-    letter-spacing: .16em;
+    letter-spacing: .14em;
 
-    box-shadow:
-      0 5px 25px rgba(0, 0, 0, .65),
-      inset 0 0 15px rgba(234, 211, 155, .12);
-
-    pointer-events: auto;
+    pointer-events: auto !important;
     touch-action: manipulation;
-    -webkit-tap-highlight-color: transparent;
-  }
-
-  .mobile-return-button:active {
-    background: #78603d;
-    color: #fff2d2;
-    transform: translate(-50%, -50%) scale(.96);
-  }
-
-  .mobile-return-button[hidden] {
-    display: none !important;
   }
 }
