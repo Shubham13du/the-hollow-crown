@@ -54,54 +54,30 @@
   returnButton.addEventListener("click", (event) => {
     event.preventDefault();
 
-    const throneEnding = !!(
-      typeof endingSequence !== "undefined" &&
-      endingSequence.finished &&
-      worldTwoState.phase === 3
-    );
-
     if (player.gameOver) {
       window.dispatchEvent(new KeyboardEvent("keydown", {
         key: "r",
         bubbles: true,
         cancelable: true
       }));
-    } else if (throneEnding) {
-      // Dismiss only the epilogue overlay. Preserve World II progress so
-      // touch players can continue toward the Death Snow gate.
-      endingSequence.finished = false;
-      endingSequence.timer = 0;
     }
   });
 
-  // Keep the button centred over the canvas for both Game Over and the
-  // throne epilogue. The latter needs a touch equivalent of the R key.
+  // The return button is reserved for actual Game Over states.
+  // The throne-to-Death-Snow transition now happens automatically.
   function updateReturnButton() {
-    const throneEnding = !!(
-      typeof endingSequence !== "undefined" &&
-      endingSequence.finished &&
-      worldTwoState.phase === 3
-    );
-    const showButton = player.gameOver || throneEnding;
-
-    if (showButton) {
+    if (player.gameOver) {
       const rect = canvas.getBoundingClientRect();
-
       returnButton.hidden = false;
-      returnButton.textContent = throneEnding ? "CONTINUE" : "TAP TO RETURN";
-      returnButton.style.left =
-        `${rect.left + rect.width / 2}px`;
-      returnButton.style.top =
-        `${rect.top + rect.height * 0.64}px`;
-
-      root.style.visibility = "";
-      root.style.pointerEvents = "";
+      returnButton.textContent = "TAP TO RETURN";
+      returnButton.style.left = `${rect.left + rect.width / 2}px`;
+      returnButton.style.top = `${rect.top + rect.height * 0.64}px`;
     } else {
       returnButton.hidden = true;
-      root.style.visibility = "";
-      root.style.pointerEvents = "";
     }
 
+    root.style.visibility = "";
+    root.style.pointerEvents = "";
     requestAnimationFrame(updateReturnButton);
   }
 
@@ -139,6 +115,7 @@
         player.velocityY = player.jumpPower;
         player.grounded = false;
         player.standingPlatform = null;
+        if (typeof HC_AUDIO !== "undefined") HC_AUDIO.playSfx("jump");
       }
 
       return;

@@ -800,6 +800,7 @@ window.addEventListener("keydown", (event) => {
         player.grounded = false;
         player.standingPlatform = null;
         setAnimation(playerAnimation, "jump");
+        if (typeof HC_AUDIO !== "undefined") HC_AUDIO.playSfx("jump");
     }
 
     if (!event.repeat && key === "j") {
@@ -849,6 +850,7 @@ function attack() {
     player.hitEnemies = [];
 
     setAnimation(playerAnimation, "attack");
+    if (typeof HC_AUDIO !== "undefined") HC_AUDIO.playSfx("attack");
 }
 
 // 15. PLATFORM COLLISION
@@ -956,6 +958,10 @@ function updatePlayer() {
     player.y += player.velocityY;
 
     checkPlatformCollision(player, previousY);
+
+    if (typeof HC_AUDIO !== "undefined") {
+        HC_AUDIO.updateFootsteps(player);
+    }
 
     if (player.y > HEIGHT + 200) {
         damagePlayer(100);

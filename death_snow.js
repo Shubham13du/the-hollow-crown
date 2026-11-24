@@ -410,22 +410,20 @@ function dsEnterWorld() {
 function updateDeathSnowEntrance() {
     if(worldTwoState.phase !== 3 || deathSnowState.active) return;
 
-    deathSnowGate.unlocked = !!(
+    const throneJourneyComplete = !!(
         worldTwoState.bossDefeated &&
         worldTwoState.spearCollected &&
         endingSequence.finished
     );
 
-    if(deathSnowGate.unlocked) {
-        deathSnowGate.opening = Math.min(1,deathSnowGate.opening+0.012);
-    }
-
-    const near =
-        player.x+player.width > deathSnowGate.x-45 &&
-        player.x < deathSnowGate.x+deathSnowGate.width+45;
-
-    if(deathSnowGate.unlocked && near && keys.e) {
+    // World III starts automatically after the throne cinematic.
+    // No extra portal interaction or CONTINUE/game-over screen is required.
+    if(throneJourneyComplete) {
+        deathSnowGate.unlocked = true;
         dsEnterWorld();
+        endingSequence.active = false;
+        endingSequence.finished = false;
+        endingSequence.timer = 0;
         keys.e = false;
     }
 }
