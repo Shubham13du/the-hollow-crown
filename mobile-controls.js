@@ -54,31 +54,59 @@
   returnButton.addEventListener("click", (event) => {
     event.preventDefault();
 
-    if (!player.gameOver) return;
+    const throneEnding = !!(
+      typeof endingSequence !== "undefined" &&
+      endingSequence.finished &&
+      worldTwoState.phase === 3
+    );
 
-    // Trigger the existing desktop R-key handler.
-    window.dispatchEvent(new KeyboardEvent("keydown", {
-      key: "r",
-      bubbles: true,
-      cancelable: true
-    }));
+    if (player.gameOver) {
+      window.dispatchEvent(new KeyboardEvent("keydown", {
+        key: "r",
+        bubbles: true,
+        cancelable: true
+      }));
+    } else if (throneEnding) {
+      // The throne epilogue intentionally leaves levelComplete false so
+      // players can continue toward Death Snow. Restart explicitly here.
+      restartGame();
+      endingSequence.active = false;
+      endingSequence.finished = false;
+      endingSequence.timer = 0;
+    }
   });
 
-  // Keep the button centred relative to the game canvas.
+  // Keep the button centred over the canvas for both Game Over and the
+  // throne epilogue. The latter needs a touch equivalent of the R key.
   function updateReturnButton() {
-    if (player.gameOver) {
+    const throneEnding = !!(
+      typeof endingSequence !== "undefined" &&
+      endingSequence.finished &&
+      worldTwoState.phase === 3
+    );
+    const showButton = player.gameOver || throneEnding;
+
+    if (showButton) {
       const rect = canvas.getBoundingClientRect();
 
       returnButton.hidden = false;
-
+      returnButton.textContent = throneEnding ? "PLAY AGAIN" : "TAP TO RETURN";
       returnButton.style.left =
         `${rect.left + rect.width / 2}px`;
-
       returnButton.style.top =
         `${rect.top + rect.height * 0.64}px`;
 
+      if (throneEnding) {
+        root.style.visibility = "hidden";
+        root.style.pointerEvents = "none";
+      } else {
+        root.style.visibility = "";
+        root.style.pointerEvents = "";
+      }
     } else {
       returnButton.hidden = true;
+      root.style.visibility = "";
+      root.style.pointerEvents = "";
     }
 
     requestAnimationFrame(updateReturnButton);
