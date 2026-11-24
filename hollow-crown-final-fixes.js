@@ -58,6 +58,10 @@
   const enterDeathSnowBeforeTransitionFix = dsEnterWorld;
   dsEnterWorld = function () {
     enterDeathSnowBeforeTransitionFix();
+    // Clear the World II throne epilogue before World III starts.
+    endingSequence.active = false;
+    endingSequence.finished = false;
+    endingSequence.timer = 0;
     // Do this immediately. Waiting for the next updateWorldTwo tick can
     // deadlock the game loop if a stale gameOver/levelComplete flag remains.
     player.gameOver = false;
@@ -118,42 +122,12 @@
   };
 
   // -------------------------------------------------------------------------
-  // 5. CONTINUOUS FROSTBOUND BACKGROUND THROUGH ALL OF WORLD III
+  // 5. KEEP THE OLD THRONE ENDING OFF THE DEATH SNOW SCREEN
   // -------------------------------------------------------------------------
-  const drawBackgroundBeforeContinuousSnowFix = drawBackground;
-  drawBackground = function () {
-    drawBackgroundBeforeContinuousSnowFix();
-
-    if (worldTwoState.phase !== 4 || !deathSnowState.active ||
-        !dsFrostboundBackground.complete ||
-        dsFrostboundBackground.naturalWidth <= 0) return;
-
-    // Repeat the existing artwork across the entire snow world. The old
-    // renderer stopped at x=15800 and drew only one un-repeated image.
-    const tileWidth = WIDTH + 1050;
-    const travel = Math.max(0, player.x - DEATH_SNOW.start) * 0.22;
-    const offset = -((travel % tileWidth + tileWidth) % tileWidth);
-    const firstTile = Math.floor((offset - tileWidth) / tileWidth);
-
-    ctx.save();
-    ctx.globalAlpha = 0.96;
-    for (let i = firstTile; ; i++) {
-      const x = offset + i * tileWidth;
-      if (x > WIDTH) break;
-      ctx.save();
-      // Alternate mirrored copies to soften the visible join between tiles.
-      if (Math.abs(i) % 2 === 1) {
-        ctx.translate(x + tileWidth, 0);
-        ctx.scale(-1, 1);
-        ctx.drawImage(dsFrostboundBackground, 0, 0, tileWidth, HEIGHT);
-      } else {
-        ctx.drawImage(dsFrostboundBackground, x, 0, tileWidth, HEIGHT);
-      }
-      ctx.restore();
-    }
-    ctx.fillStyle = "rgba(8,20,36,0.10)";
-    ctx.fillRect(0, 0, WIDTH, HEIGHT);
-    ctx.restore();
+  const drawThroneEndingBeforeDeathSnowHide = drawFinalEnding;
+  drawFinalEnding = function () {
+    if (worldTwoState.phase === 4 && deathSnowState.active) return;
+    drawThroneEndingBeforeDeathSnowHide();
   };
 
   // -------------------------------------------------------------------------
