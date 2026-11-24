@@ -755,6 +755,10 @@ function drawAncientGate() {
         gate.y - 24
     );
 
+    ctx.fillStyle = gate.open ? "#f0d28a" : "#e7b0a0";
+    ctx.font = "bold 13px Georgia";
+    ctx.fillText("ENTER TO CONTINUE", gate.x + gate.width / 2, gate.y - 48);
+
     ctx.font = "12px Georgia";
     ctx.fillStyle = "#d8c8a9";
 
@@ -3569,6 +3573,13 @@ function drawSecondGate() {
 
     ctx.fillStyle = "rgba(235,95,45,0.18)";
     ctx.fillRect(secondGate.x + 5, secondGate.y + 5, secondGate.width - 10, secondGate.height - 10);
+
+    ctx.save();
+    ctx.fillStyle = open ? "#f2c17c" : "#e7b0a0";
+    ctx.font = "bold 13px Georgia";
+    ctx.textAlign = "center";
+    ctx.fillText("ENTER TO CONTINUE", secondGate.x + secondGate.width / 2, secondGate.y - 24);
+    ctx.restore();
 
     if (open) {
         ctx.fillStyle = `rgba(255,125,60,${0.15 + progress * 0.3})`;
