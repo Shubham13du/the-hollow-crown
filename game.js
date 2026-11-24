@@ -809,12 +809,19 @@ window.addEventListener("keydown", (event) => {
     if (
         !event.repeat &&
         key === "r" &&
-        (player.gameOver || player.levelComplete)
+        (
+            player.gameOver ||
+            player.levelComplete ||
+            (endingSequence.finished && worldTwoState.phase === 3)
+        )
     ) {
         if (player.gameOver) {
             respawnAtCheckpoint();
         } else {
             restartGame();
+            endingSequence.active = false;
+            endingSequence.finished = false;
+            endingSequence.timer = 0;
         }
     }
 });
