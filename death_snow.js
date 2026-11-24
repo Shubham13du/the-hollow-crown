@@ -61,6 +61,103 @@ function dsRand(n) {
     return v - Math.floor(v);
 }
 
+// ---------------------------------------------------------------------------
+// DEATH SNOW SPRITE SHEETS — Ice Hound + Ice Golem
+// The supplied PNGs use a flat #3a404c matte. Convert that matte to alpha once
+// after load so the sprites render cleanly over the game world.
+// ---------------------------------------------------------------------------
+
+function dsLoadSpriteSheet(src) {
+    const image = new Image();
+    const sheet = { image, canvas: null, ready: false };
+
+    image.onload = function () {
+        const surface = document.createElement("canvas");
+        surface.width = image.naturalWidth;
+        surface.height = image.naturalHeight;
+
+        const surfaceCtx = surface.getContext("2d", { willReadFrequently: true });
+        surfaceCtx.drawImage(image, 0, 0);
+
+        const pixels = surfaceCtx.getImageData(0, 0, surface.width, surface.height);
+        const data = pixels.data;
+
+        for (let i = 0; i < data.length; i += 4) {
+            if (data[i] === 58 && data[i + 1] === 64 && data[i + 2] === 76) {
+                data[i + 3] = 0;
+            }
+        }
+
+        surfaceCtx.putImageData(pixels, 0, 0);
+        sheet.canvas = surface;
+        sheet.ready = true;
+    };
+
+    image.onerror = function () {
+        console.warn("Death Snow sprite sheet failed to load:", src);
+    };
+
+    image.src = src;
+    return sheet;
+}
+
+const DS_SPRITES = {
+    hound: dsLoadSpriteSheet("assets/death-snow/ice-hound.png"),
+    golem: dsLoadSpriteSheet("assets/death-snow/ice-golem.png")
+};
+
+// Frame rectangles are measured from the supplied, irregularly packed sheets.
+const DS_SPRITE_FRAMES = {
+    hound: [
+        { x: 24,  y: 66,  w: 252, h: 123 },
+        { x: 357, y: 27,  w: 249, h: 165 },
+        { x: 663, y: 0,   w: 324, h: 123 },
+        { x: 111, y: 198, w: 168, h: 189 }
+    ],
+    golem: [
+        { x: 120, y: 53, w: 187, h: 233 },
+        { x: 540, y: 53, w: 177, h: 230 },
+        { x: 920, y: 97, w: 257, h: 186 }
+    ]
+};
+
+function dsDrawSpriteSheetEnemy(enemy, kind) {
+    const sheet = DS_SPRITES[kind];
+    const frames = DS_SPRITE_FRAMES[kind];
+    if (!sheet || !sheet.ready || !frames || !frames.length) return false;
+
+    const lastX = enemy._dsSpriteLastX;
+    const moving = lastX !== undefined && Math.abs(enemy.x - lastX) > 0.05;
+    enemy._dsSpriteLastX = enemy.x;
+
+    if (moving) enemy._dsSpriteAnimTick = (enemy._dsSpriteAnimTick || 0) + 1;
+    else enemy._dsSpriteAnimTick = 0;
+
+    let frameIndex = 0;
+    if (enemy.state === "death" || enemy.state === "dead") {
+        frameIndex = frames.length - 1;
+    } else if (moving && frames.length > 1) {
+        frameIndex = 1 + (Math.floor(enemy._dsSpriteAnimTick / 8) % (frames.length - 1));
+    }
+
+    const frame = frames[frameIndex];
+    const scale = Math.min(enemy.width / frame.w, enemy.height / frame.h);
+    const drawWidth = frame.w * scale;
+    const drawHeight = frame.h * scale;
+    const drawX = enemy.x + (enemy.width - drawWidth) / 2;
+    const drawY = enemy.y + enemy.height - drawHeight;
+
+    ctx.save();
+    ctx.imageSmoothingEnabled = false;
+    ctx.drawImage(
+        sheet.canvas,
+        frame.x, frame.y, frame.w, frame.h,
+        drawX, drawY, drawWidth, drawHeight
+    );
+    ctx.restore();
+    return true;
+}
+
 function dsOverlap(a,b) {
     return a.x < b.x+b.width && a.x+a.width > b.x &&
            a.y < b.y+b.height && a.y+a.height > b.y;
@@ -430,6 +527,18 @@ function dsConfigureEnemy(e,d) {
     if(e.deathSnowType === "leopard") {
         e.width = 62;
         e.height = 48;
+        e.y = ground.y-e.height;
+    }
+
+    if(e.deathSnowType === "hound") {
+        e.width = 82;
+        e.height = 48;
+        e.y = ground.y-e.height;
+    }
+
+    if(e.deathSnowType === "golem") {
+        e.width = 76;
+        e.height = 92;
         e.y = ground.y-e.height;
     }
 
@@ -1084,7 +1193,7 @@ function dsEnterSanctum() {
     camera.targetX=23280;
 
     const roster=[
-        {x:23520,name:"SANCTUM WARDEN",health:3,speed:1.7,type:"hound"},
+        {x:23520,name:"SANCTUM WARDEN",health:3,speed:1.7,type:"golem"},
         {x:23840,name:"FROST RAVEN ELDER",health:3,speed:1.8,type:"raven",flying:true},
         {x:24120,name:"CRYSTAL STALKER",health:3,speed:1.8,type:"hound"}
     ];
@@ -1875,6 +1984,13 @@ function dsDrawSnowGod(enemy) {
 }
 
 function dsDrawMonster(enemy) {
+    if(enemy.deathSnowType==="hound") {
+        if(dsDrawSpriteSheetEnemy(enemy,"hound")) return;
+    }
+    else if(enemy.deathSnowType==="golem") {
+        if(dsDrawSpriteSheetEnemy(enemy,"golem")) return;
+    }
+
     if(enemy.deathSnowType==="leopard" ||
        enemy.deathSnowType==="snowleopard") {
         dsDrawLeopard(enemy,!!enemy.deathSnowBoss);
