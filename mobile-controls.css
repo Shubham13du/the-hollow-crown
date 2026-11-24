@@ -93,3 +93,54 @@
   .game-header { display: none; }
   #gameCanvas { max-height: 100svh; }
 }
+
+
+/* MOBILE GAME OVER — CHECKPOINT RETURN BUTTON */
+
+.mobile-return-button {
+  display: none;
+}
+
+@media (pointer: coarse), (max-width: 760px) {
+  .mobile-return-button {
+    display: block;
+    position: fixed;
+    z-index: 950;
+    transform: translate(-50%, -50%);
+
+    min-width: 190px;
+    min-height: 48px;
+    padding: 12px 22px;
+
+    border: 1px solid rgba(234, 211, 155, .9);
+    border-radius: 5px;
+
+    background: linear-gradient(
+      110deg,
+      rgba(92, 67, 38, .96),
+      rgba(25, 27, 35, .97)
+    );
+
+    color: #ead39b;
+    font: 700 12px Cinzel, Georgia, serif;
+    letter-spacing: .16em;
+
+    box-shadow:
+      0 5px 25px rgba(0, 0, 0, .65),
+      inset 0 0 15px rgba(234, 211, 155, .12);
+
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .mobile-return-button:active {
+    background: #78603d;
+    color: #fff2d2;
+    transform: translate(-50%, -50%) scale(.96);
+  }
+
+  .mobile-return-button[hidden] {
+    display: none !important;
+  }
+}
+
