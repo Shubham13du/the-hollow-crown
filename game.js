@@ -3683,7 +3683,7 @@ function drawFinalEnding() {
     ctx.fillStyle = "#b8a994";
     ctx.font = "15px Georgia";
     ctx.fillText("THE END", WIDTH / 2, HEIGHT / 2 + 35);
-    ctx.fillText("Press R to begin the journey again", WIDTH / 2, HEIGHT / 2 + 80);
+    ctx.fillText("Press R to restart  |  Tap CONTINUE to proceed", WIDTH / 2, HEIGHT / 2 + 80);
     ctx.textAlign = "left";
 }
 
