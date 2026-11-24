@@ -1298,6 +1298,34 @@ drawBackground=function() {
     ctx.fillStyle=g;
     ctx.fillRect(0,0,WIDTH,HEIGHT);
 
+    // Continuous Frostbound Pass artwork, drawn BEHIND the procedural
+    // mountains, spires and snowfall. Tile by camera parallax so it never
+    // scrolls out of view or stops at the old x=15800 cutoff.
+    if(dsFrostboundBackground.complete &&
+       dsFrostboundBackground.naturalWidth>0) {
+        const tileWidth=WIDTH+1050;
+        const travel=camera.x*0.22;
+        const offset=-((travel%tileWidth+tileWidth)%tileWidth);
+        let tileIndex=0;
+
+        for(let tileX=offset-tileWidth;
+            tileX<WIDTH;
+            tileX+=tileWidth,tileIndex++) {
+            ctx.save();
+            if(tileIndex%2===1) {
+                ctx.translate(tileX+tileWidth,0);
+                ctx.scale(-1,1);
+                ctx.drawImage(dsFrostboundBackground,0,0,tileWidth,HEIGHT);
+            } else {
+                ctx.drawImage(dsFrostboundBackground,tileX,0,tileWidth,HEIGHT);
+            }
+            ctx.restore();
+        }
+
+        ctx.fillStyle="rgba(8,20,36,0.10)";
+        ctx.fillRect(0,0,WIDTH,HEIGHT);
+    }
+
     // Moon and halo.
     const moonX=760-camera.x*0.035;
     const moonY=92;
@@ -1401,28 +1429,6 @@ drawBackground=function() {
     ctx.fillStyle=fog;
     ctx.fillRect(0,HEIGHT-160,WIDTH,160);
 
-    // Frostbound Pass: original custom environment artwork with subtle
-    // camera parallax. Other Death Snow regions retain their own backdrops.
-    if(player.x>=DEATH_SNOW.start && player.x<15800 &&
-       dsFrostboundBackground.complete &&
-       dsFrostboundBackground.naturalWidth>0) {
-        const parallaxX = -Math.max(0,player.x-DEATH_SNOW.start)*0.22;
-        const artWidth = WIDTH+1050;
-
-        ctx.save();
-        ctx.globalAlpha = 0.94;
-        ctx.drawImage(
-            dsFrostboundBackground,
-            parallaxX,
-            0,
-            artWidth,
-            HEIGHT
-        );
-        // Cool atmospheric tint to blend the artwork with the game's palette.
-        ctx.fillStyle = "rgba(8,20,36,0.13)";
-        ctx.fillRect(0,0,WIDTH,HEIGHT);
-        ctx.restore();
-    }
 };
 
 // ---------------------------------------------------------------------------
@@ -2133,8 +2139,9 @@ function drawDeathSnowHUD() {
 
     ctx.save();
 
-    ctx.fillStyle="rgba(5,14,26,.78)";
-    ctx.fillRect(18,18,250,52);
+    // Player health + flight status share a compact, readable HUD.
+    ctx.fillStyle="rgba(5,14,26,.88)";
+    ctx.fillRect(18,18,270,94);
 
     ctx.fillStyle="#e4f5ff";
     ctx.font="bold 12px Georgia";
@@ -2142,30 +2149,35 @@ function drawDeathSnowHUD() {
         deathSnowState.region==="sanctum"
             ?"THE FROZEN SANCTUM"
             :"THE DEATH SNOW",
-        30,36
+        30,35
     );
 
-    ctx.fillStyle="#47657d";
-    ctx.fillRect(30,44,210,9);
-
-    ctx.fillStyle="#bfeeff";
-    ctx.fillRect(
-        30,44,
-        210*(deathSnowState.flightTime/deathSnowState.flightMax),
-        9
-    );
-
-    ctx.strokeStyle="#d7f3ff";
-    ctx.strokeRect(30,44,210,9);
-
+    const maxHealth=Math.max(1,player.maxHealth||100);
+    const healthRatio=Math.max(0,Math.min(1,player.health/maxHealth));
     ctx.font="10px Georgia";
-    ctx.fillStyle="#d9edf6";
+    ctx.fillStyle="#f1dfe0";
+    ctx.fillText("HEALTH  "+Math.max(0,Math.ceil(player.health))+" / "+maxHealth,30,51);
+    ctx.fillStyle="rgba(75,35,43,.95)";
+    ctx.fillRect(30,57,226,9);
+    ctx.fillStyle=healthRatio>0.35?"#91d6bd":"#e58b83";
+    ctx.fillRect(30,57,226*healthRatio,9);
+    ctx.strokeStyle="rgba(235,245,250,.85)";
+    ctx.strokeRect(30,57,226,9);
+
+    const flightRatio=Math.max(0,Math.min(1,deathSnowState.flightTime/deathSnowState.flightMax));
+    ctx.fillStyle="#c9e8f5";
     ctx.fillText(
         deathSnowState.flightTime>0
-            ?"FLIGHT: "+Math.ceil(deathSnowState.flightTime/60)+"s"
+            ?"FLIGHT  "+Math.ceil(deathSnowState.flightTime/60)+"s"
             :"FLIGHT POTION REQUIRED",
-        30,64
+        30,82
     );
+    ctx.fillStyle="#344e62";
+    ctx.fillRect(30,88,226,8);
+    ctx.fillStyle="#bfeeff";
+    ctx.fillRect(30,88,226*flightRatio,8);
+    ctx.strokeStyle="#d7f3ff";
+    ctx.strokeRect(30,88,226,8);
 
     ctx.textAlign="right";
     ctx.fillStyle="#e5f4fb";
