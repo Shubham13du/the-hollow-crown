@@ -149,10 +149,16 @@ function dsDrawSpriteSheetEnemy(enemy, kind) {
 
     ctx.save();
     ctx.imageSmoothingEnabled = false;
+    const spriteFacing = enemy.facing || 1;
+    ctx.translate(enemy.x + enemy.width / 2, 0);
+    ctx.scale(spriteFacing, 1);
     ctx.drawImage(
         sheet.canvas,
         frame.x, frame.y, frame.w, frame.h,
-        drawX, drawY, drawWidth, drawHeight
+        drawX - (enemy.x + enemy.width / 2),
+        drawY,
+        drawWidth,
+        drawHeight
     );
     ctx.restore();
     return true;
