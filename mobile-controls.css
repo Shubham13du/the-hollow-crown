@@ -1,0 +1,95 @@
+/* Touch controls — dark-fantasy gold/ice styling */
+#mobileControls {
+  display: none;
+}
+
+@media (pointer: coarse), (max-width: 760px) {
+  #mobileControls {
+    position: fixed;
+    z-index: 900;
+    inset: auto 0 max(10px, env(safe-area-inset-bottom)) 0;
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    padding: 0 max(12px, env(safe-area-inset-left)) 0 max(12px, env(safe-area-inset-right));
+    pointer-events: none;
+    user-select: none;
+    -webkit-user-select: none;
+    touch-action: none;
+  }
+
+  #mobileControls .touch-cluster {
+    display: flex;
+    align-items: flex-end;
+    gap: 8px;
+    pointer-events: auto;
+  }
+
+  #mobileControls .touch-pad {
+    display: grid;
+    grid-template-columns: repeat(2, clamp(48px, 12vw, 62px));
+    gap: 8px;
+  }
+
+  #mobileControls button {
+    min-width: clamp(48px, 12vw, 62px);
+    min-height: clamp(48px, 12vw, 62px);
+    border: 1px solid rgba(218, 190, 137, .72);
+    border-radius: 14px;
+    background: rgba(10, 14, 23, .78);
+    color: #f0dfbb;
+    box-shadow: 0 4px 16px rgba(0,0,0,.38), inset 0 0 14px rgba(190,166,124,.08);
+    font: 700 11px Cinzel, Georgia, serif;
+    letter-spacing: .04em;
+    touch-action: none;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  #mobileControls button.is-pressed {
+    background: rgba(111, 132, 153, .72);
+    border-color: #d9efff;
+    color: #fff;
+    transform: scale(.96);
+  }
+
+  #mobileControls .action-cluster {
+    display: grid;
+    grid-template-columns: repeat(2, clamp(52px, 13vw, 68px));
+    gap: 8px;
+  }
+
+  #mobileControls [data-action="jump"] {
+    min-height: clamp(58px, 15vw, 74px);
+    border-color: rgba(180, 220, 244, .85);
+    background: rgba(23, 49, 68, .84);
+  }
+
+  #mobileControls [data-action="attack"] {
+    border-color: rgba(222, 173, 112, .9);
+    background: rgba(67, 38, 30, .86);
+  }
+
+  #mobileControls [data-action="interact"] {
+    min-height: 42px;
+    font-size: 10px;
+  }
+
+  #mobileControls [data-action="run"],
+  #mobileControls [data-action="descend"] {
+    min-height: 42px;
+    font-size: 9px;
+  }
+
+  #gameCanvas { touch-action: none; }
+  .game-controls { display: none; }
+}
+
+@media (max-height: 430px) and (orientation: landscape) {
+  #mobileControls { bottom: max(5px, env(safe-area-inset-bottom)); }
+  #mobileControls button { min-height: 44px; min-width: 48px; border-radius: 11px; }
+  #mobileControls .action-cluster { grid-template-columns: repeat(2, 52px); gap: 6px; }
+  #mobileControls .touch-pad { grid-template-columns: repeat(2, 48px); gap: 6px; }
+  .game-container { padding: 4px 6px 8px; }
+  .game-header { display: none; }
+  #gameCanvas { max-height: 100svh; }
+}
