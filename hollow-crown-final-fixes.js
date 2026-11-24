@@ -126,7 +126,10 @@
   // -------------------------------------------------------------------------
   const drawThroneEndingBeforeDeathSnowHide = drawFinalEnding;
   drawFinalEnding = function () {
-    if (worldTwoState.phase === 4 && deathSnowState.active) return;
+    // The throne epilogue is a short in-world cinematic only. Never paint the
+    // old full-screen "THE END / game over" card over the playable throne room
+    // or the Death Snow portal. The final epilogue is shown only after victory.
+    if (worldTwoState.phase >= 3) return;
     drawThroneEndingBeforeDeathSnowHide();
   };
 
