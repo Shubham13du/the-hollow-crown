@@ -14,6 +14,12 @@
       player.x < ancientGate.x + ancientGate.width + 45 &&
       Math.abs(player.y + player.height - LEVEL.groundY) < 90;
 
+    if (nearGate && keys.e && !worldTwoState.worldOneBossDefeated) {
+      showNotification("KILL SUNKEN FIRST");
+      keys.e = false;
+      return;
+    }
+
     if (ancientGate.open && nearGate && keys.e) {
       worldTwoState.phase = 2;
       player.x = WORLD_TWO.start + 80;
