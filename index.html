@@ -19,6 +19,22 @@
     <canvas id="gameCanvas" width="960" height="540">
       Your browser does not support Canvas.
     </canvas>
+    
+<div id="mobileControls" aria-label="Touch game controls">
+  <div class="touch-cluster touch-pad">
+    <button type="button" data-action="left">◀</button>
+    <button type="button" data-action="right">▶</button>
+    <button type="button" data-action="run">RUN</button>
+    <button type="button" data-action="descend">DOWN</button>
+  </div>
+
+  <div class="touch-cluster action-cluster">
+    <button type="button" data-action="jump">JUMP</button>
+    <button type="button" data-action="attack">ATTACK</button>
+    <button type="button" data-action="interact">ENTER</button>
+  </div>
+</div>
+
 
     <footer class="game-controls">
       <p>MOVE: A / D</p>
@@ -75,11 +91,13 @@
     </div>
   </section>
 
-  <script src="game.js"></script>
-  <script src="world2_fix.js"></script>
-  <script src="death_snow.js"></script>
-  <script src="audio-manager.js"></script>
-  <script src="main-menu.js"></script>
+ <script src="game.js"></script>
+<script src="world2_fix.js"></script>
+<script src="death_snow.js"></script>
+<script src="death-snow-gate-hotfix.js"></script>
+<script src="mobile-controls.js"></script>
+<script src="audio-manager.js"></script>
+<script src="main-menu.js"></script>
 
   <script>
     document.getElementById("deathSnowTestButton").addEventListener("click", function () {
@@ -114,6 +132,5 @@
     });
   </script>
 
-  <script src="main-menu.js"></script>
 </body>
 </html>
