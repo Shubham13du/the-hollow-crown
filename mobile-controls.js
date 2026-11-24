@@ -1,5 +1,5 @@
 
-/* THE HOLLOW CROWN — touch controls + mobile checkpoint return */
+/* THE HOLLOW CROWN — touch controls + checkpoint button */
 (() => {
   "use strict";
 
@@ -29,37 +29,45 @@
     for (const name of Object.keys(keyGroups)) {
       setGroup(name, false);
     }
+
     keys.j = false;
     held.clear();
   }
 
-  // MOBILE GAME OVER BUTTON
+  // Create the button OUTSIDE the mobile controls flex container.
   const returnButton = document.createElement("button");
+
   returnButton.type = "button";
   returnButton.className = "mobile-return-button";
   returnButton.textContent = "TAP TO RETURN";
   returnButton.hidden = true;
-  returnButton.setAttribute("aria-label", "Return to checkpoint");
 
-  root.appendChild(returnButton);
+  document.body.appendChild(returnButton);
 
   returnButton.addEventListener("click", (event) => {
     event.preventDefault();
 
-    if (player.gameOver && typeof respawnAtCheckpoint === "function") {
-      respawnAtCheckpoint();
+    if (
+      player.gameOver &&
+      typeof window.respawnAtCheckpoint === "function"
+    ) {
+      window.respawnAtCheckpoint();
     }
   });
 
-  // Keep the button directly below the Game Over message.
+  // Keep button centred below the Game Over message.
   function updateReturnButton() {
-    const visible = !!player.gameOver;
-    returnButton.hidden = !visible;
-
-    if (visible) {
+    if (player.gameOver) {
       const rect = canvas.getBoundingClientRect();
-      returnButton.style.left = `${rect.left + rect.width / 2}px`;
-      returnButton.style.top = `${rect.top + rect.height * 0.67}px`;
+
+      returnButton.hidden = false;
+      returnButton.style.left =
+        `${rect.left + rect.width / 2}px`;
+
+      returnButton.style.top =
+        `${rect.top + rect.height * 0.62}px`;
+    } else {
+      returnButton.hidden = true;
     }
 
     requestAnimationFrame(updateReturnButton);
@@ -91,8 +99,8 @@
     }
 
     if (action === "restart") {
-      if (player.gameOver && typeof respawnAtCheckpoint === "function") {
-        respawnAtCheckpoint();
+      if (player.gameOver) {
+        window.respawnAtCheckpoint();
       } else if (player.levelComplete) {
         restartGame();
       }
@@ -111,8 +119,11 @@
     const stillHeld = [...held.values()].includes(action);
     if (stillHeld) return;
 
-    if (action === "attack") keys.j = false;
-    else setGroup(action, false);
+    if (action === "attack") {
+      keys.j = false;
+    } else {
+      setGroup(action, false);
+    }
   }
 
   root.querySelectorAll("[data-action]").forEach((button) => {
