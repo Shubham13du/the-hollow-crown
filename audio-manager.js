@@ -6,7 +6,7 @@ const HC_AUDIO = {
     deathSnow: new Audio("assets/sounds/death-snow-theme.mp3"),
     current: null,
     volume: 0.35,
-    sfxVolume: 0.22,
+    sfxVolume: 0.7,
     audioContext: null,
     stepCooldown: 0,
 
@@ -44,30 +44,38 @@ const HC_AUDIO = {
     playSfx(name) {
         const audio = this.getAudioContext();
         if (!audio || this.sfxVolume <= 0) return;
-        const now = audio.currentTime;
-        const oscillator = audio.createOscillator();
-        const gain = audio.createGain();
-        const filter = audio.createBiquadFilter();
-        const presets = {
-            jump:   { type: "triangle", start: 210, end: 570, duration: 0.18, peak: 0.16 },
-            attack: { type: "sawtooth", start: 520, end: 105, duration: 0.13, peak: 0.13 },
-            step:   { type: "sine", start: 115, end: 62, duration: 0.055, peak: 0.075 }
+        const scheduleSound = () => {
+            if (this.sfxVolume <= 0) return;
+            const now = audio.currentTime;
+            const oscillator = audio.createOscillator();
+            const gain = audio.createGain();
+            const filter = audio.createBiquadFilter();
+            const presets = {
+                jump:   { type: "triangle", start: 210, end: 570, duration: 0.20, peak: 0.30 },
+                attack: { type: "sawtooth", start: 520, end: 105, duration: 0.16, peak: 0.27 },
+                step:   { type: "sine", start: 115, end: 62, duration: 0.075, peak: 0.18 }
+            };
+            const sound = presets[name];
+            if (!sound) return;
+            oscillator.type = sound.type;
+            oscillator.frequency.setValueAtTime(sound.start, now);
+            oscillator.frequency.exponentialRampToValueAtTime(Math.max(1, sound.end), now + sound.duration);
+            filter.type = "lowpass";
+            filter.frequency.setValueAtTime(name === "attack" ? 2100 : 1100, now);
+            gain.gain.setValueAtTime(0.0001, now);
+            gain.gain.exponentialRampToValueAtTime(Math.max(0.001, sound.peak * this.sfxVolume), now + 0.012);
+            gain.gain.exponentialRampToValueAtTime(0.0001, now + sound.duration);
+            oscillator.connect(filter);
+            filter.connect(gain);
+            gain.connect(audio.destination);
+            oscillator.start(now);
+            oscillator.stop(now + sound.duration + 0.02);
         };
-        const sound = presets[name];
-        if (!sound) return;
-        oscillator.type = sound.type;
-        oscillator.frequency.setValueAtTime(sound.start, now);
-        oscillator.frequency.exponentialRampToValueAtTime(Math.max(1, sound.end), now + sound.duration);
-        filter.type = "lowpass";
-        filter.frequency.setValueAtTime(name === "attack" ? 1800 : 900, now);
-        gain.gain.setValueAtTime(0.0001, now);
-        gain.gain.exponentialRampToValueAtTime(Math.max(0.001, sound.peak * this.sfxVolume), now + 0.012);
-        gain.gain.exponentialRampToValueAtTime(0.0001, now + sound.duration);
-        oscillator.connect(filter);
-        filter.connect(gain);
-        gain.connect(audio.destination);
-        oscillator.start(now);
-        oscillator.stop(now + sound.duration + 0.015);
+        if (audio.state === "suspended") {
+            audio.resume().then(scheduleSound).catch(error => console.warn("Gameplay sound could not start:", error));
+        } else {
+            scheduleSound();
+        }
     },
 
     updateFootsteps(player) {

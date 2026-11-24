@@ -780,6 +780,7 @@ function drawAncientGate() {
 const keys = {};
 
 window.addEventListener("keydown", (event) => {
+    if (typeof HC_AUDIO !== "undefined") HC_AUDIO.unlockSfx();
     const key = event.key.toLowerCase();
     keys[key] = true;
 

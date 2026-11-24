@@ -91,6 +91,7 @@
     const action = button.dataset.action;
 
     if (!action) return;
+    if (typeof HC_AUDIO !== "undefined") HC_AUDIO.unlockSfx();
 
     held.set(pointerId, action);
 
