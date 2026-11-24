@@ -14,13 +14,14 @@
       player.x < ancientGate.x + ancientGate.width + 45 &&
       Math.abs(player.y + player.height - LEVEL.groundY) < 90;
 
-    if (nearGate && keys.e && !worldTwoState.worldOneBossDefeated) {
+    if (nearGate && (keys.e || keys.enter) && !worldTwoState.worldOneBossDefeated) {
       showNotification("KILL SUNKEN FIRST");
       keys.e = false;
+      keys.enter = false;
       return;
     }
 
-    if (ancientGate.open && nearGate && keys.e) {
+    if (ancientGate.open && nearGate && (keys.e || keys.enter)) {
       worldTwoState.phase = 2;
       player.x = WORLD_TWO.start + 80;
       player.y = ground.y - player.height;
@@ -35,6 +36,7 @@
       spawnWorldTwoEnemies();
       showNotification("WORLD II — THE ASHEN ABYSS");
       keys.e = false;
+      keys.enter = false;
     }
   };
 
@@ -88,7 +90,7 @@
       player.x < secondGate.x + secondGate.width + 45 &&
       Math.abs(player.y + player.height - ground.y) < 90;
 
-    if (near && keys.e) {
+    if (near && (keys.e || keys.enter)) {
       worldTwoState.phase = 3;
       player.x = WORLD_TWO.finalStart;
       player.y = ground.y - player.height;
@@ -106,6 +108,7 @@
       endingSequence.timer = 0;
       showNotification("THE HOLLOW THRONE");
       keys.e = false;
+      keys.enter = false;
     }
   };
 
