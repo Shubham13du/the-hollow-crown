@@ -95,7 +95,8 @@
 }
 
 
-/* MOBILE GAME OVER — CHECKPOINT RETURN BUTTON */
+
+/* MOBILE GAME OVER — CHECKPOINT RETURN */
 
 .mobile-return-button {
   display: none;
@@ -105,7 +106,8 @@
   .mobile-return-button {
     display: block;
     position: fixed;
-    z-index: 950;
+    z-index: 1100;
+
     transform: translate(-50%, -50%);
 
     min-width: 190px;
@@ -129,6 +131,7 @@
       0 5px 25px rgba(0, 0, 0, .65),
       inset 0 0 15px rgba(234, 211, 155, .12);
 
+    pointer-events: auto;
     touch-action: manipulation;
     -webkit-tap-highlight-color: transparent;
   }
@@ -143,4 +146,3 @@
     display: none !important;
   }
 }
-
