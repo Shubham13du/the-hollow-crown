@@ -106,6 +106,21 @@ const DS_SPRITES = {
     golem: dsLoadSpriteSheet("assets/death-snow/ice-golem.png")
 };
 
+// Ancient Snow God — 4 columns x 3 animation rows (idle, walk, attack).
+// The uploaded sheet is kept as-is; nearest-neighbour rendering preserves pixel art.
+const DS_SNOW_GOD_SPRITE = (() => {
+    const image = new Image();
+    const sprite = { image, ready:false, frameWidth:0, frameHeight:0 };
+    image.onload = () => {
+        sprite.frameWidth = image.naturalWidth / 4;
+        sprite.frameHeight = image.naturalHeight / 3;
+        sprite.ready = sprite.frameWidth > 0 && sprite.frameHeight > 0;
+    };
+    image.onerror = () => console.warn("Snow God sprite sheet failed to load.");
+    image.src = "assets/death-snow/Icy%20Knight%20Boss%20Sprite%20Sheet.png";
+    return sprite;
+})();
+
 // Frame rectangles are measured from the supplied, irregularly packed sheets.
 const DS_SPRITE_FRAMES = {
     hound: [
@@ -1944,47 +1959,70 @@ function dsDrawWyrm(enemy) {
 function dsDrawSnowGod(enemy) {
     const w=enemy.width;
     const h=enemy.height;
+    const sprite=DS_SNOW_GOD_SPRITE;
 
-    ctx.save();
-    ctx.translate(enemy.x+w/2,enemy.y+h);
-    ctx.scale(enemy.facing||1,1);
+    if(sprite.ready) {
+        const dx=(player.x+player.width/2)-(enemy.x+enemy.width/2);
+        const moving=Math.abs(dx)>190;
+        const attacking=Math.abs(dx)<245 &&
+            (enemy.state==="attack" || (enemy.dsTimer||0)%112<26);
+        const row=attacking?2:(moving?1:0);
+        const frameCount=4;
+        const frame=Math.floor((enemy.dsTimer||0)/(attacking?5: moving?9:15))%frameCount;
+        const fw=sprite.frameWidth;
+        const fh=sprite.frameHeight;
+        const scale=Math.min((w*1.55)/fw,(h*1.18)/fh);
+        const dw=fw*scale;
+        const dh=fh*scale;
 
-    ctx.fillStyle="#a9c3d5";
-    ctx.fillRect(-w*.32,-h*.82,w*.64,h*.82);
-
-    ctx.fillStyle="#dff5ff";
-    ctx.beginPath();
-    ctx.moveTo(-w*.36,-h*.78);
-    ctx.lineTo(0,-h*1.08);
-    ctx.lineTo(w*.36,-h*.78);
-    ctx.fill();
-
-    ctx.fillStyle="#6e8da6";
-    ctx.fillRect(-w*.42,-h*.55,w*.84,h*.18);
-
-    ctx.fillStyle="#e9fbff";
-    ctx.fillRect(-22,-h*.78,13,5);
-    ctx.fillRect(9,-h*.78,13,5);
-
-    ctx.strokeStyle="#d8f5ff";
-    ctx.lineWidth=8;
-    ctx.beginPath();
-    ctx.moveTo(w*.28,-h*.72);
-    ctx.lineTo(w*.53,-h*.05);
-    ctx.stroke();
-
-    ctx.fillStyle="#bdf0ff";
-    ctx.fillRect(w*.48,-h*.10,8,15);
+        ctx.save();
+        ctx.imageSmoothingEnabled=false;
+        ctx.translate(enemy.x+w/2,0);
+        ctx.scale(enemy.facing||1,1);
+        ctx.drawImage(
+            sprite.image,
+            frame*fw,row*fh,fw,fh,
+            -dw/2,enemy.y+h-dh,dw,dh
+        );
+        ctx.restore();
+    } else {
+        // Keep the existing fallback until the PNG finishes loading.
+        ctx.save();
+        ctx.translate(enemy.x+w/2,enemy.y+h);
+        ctx.scale(enemy.facing||1,1);
+        ctx.fillStyle="#a9c3d5";
+        ctx.fillRect(-w*.32,-h*.82,w*.64,h*.82);
+        ctx.fillStyle="#dff5ff";
+        ctx.beginPath();
+        ctx.moveTo(-w*.36,-h*.78);
+        ctx.lineTo(0,-h*1.08);
+        ctx.lineTo(w*.36,-h*.78);
+        ctx.fill();
+        ctx.fillStyle="#6e8da6";
+        ctx.fillRect(-w*.42,-h*.55,w*.84,h*.18);
+        ctx.fillStyle="#e9fbff";
+        ctx.fillRect(-22,-h*.78,13,5);
+        ctx.fillRect(9,-h*.78,13,5);
+        ctx.strokeStyle="#d8f5ff";
+        ctx.lineWidth=8;
+        ctx.beginPath();
+        ctx.moveTo(w*.28,-h*.72);
+        ctx.lineTo(w*.53,-h*.05);
+        ctx.stroke();
+        ctx.fillStyle="#bdf0ff";
+        ctx.fillRect(w*.48,-h*.10,8,15);
+        ctx.restore();
+    }
 
     if(enemy.phase===2) {
+        ctx.save();
         ctx.strokeStyle="rgba(180,235,255,.8)";
         ctx.lineWidth=3;
         ctx.beginPath();
-        ctx.arc(0,-h*.5,w*.68,0,Math.PI*2);
+        ctx.arc(enemy.x+w/2,enemy.y+h*.5,w*.68,0,Math.PI*2);
         ctx.stroke();
+        ctx.restore();
     }
-
-    ctx.restore();
 }
 
 function dsDrawMonster(enemy) {
