@@ -5,8 +5,8 @@ const HC_AUDIO = {
     exploration: new Audio("assets/sounds/exploration-theme.mp3"),
     deathSnow: new Audio("assets/sounds/death-snow-theme.mp3"),
     current: null,
-    volume: 0.35,
-    sfxVolume: 0.7,
+    volume: 0.16,
+    sfxVolume: 1.0,
     audioContext: null,
     stepCooldown: 0,
 
@@ -51,9 +51,9 @@ const HC_AUDIO = {
             const gain = audio.createGain();
             const filter = audio.createBiquadFilter();
             const presets = {
-                jump:   { type: "triangle", start: 210, end: 570, duration: 0.20, peak: 0.30 },
-                attack: { type: "sawtooth", start: 520, end: 105, duration: 0.16, peak: 0.27 },
-                step:   { type: "sine", start: 115, end: 62, duration: 0.075, peak: 0.18 }
+                jump:   { type: "triangle", start: 210, end: 570, duration: 0.24, peak: 0.78 },
+                attack: { type: "sawtooth", start: 620, end: 90, duration: 0.20, peak: 0.82 },
+                step:   { type: "sine", start: 145, end: 58, duration: 0.09, peak: 0.48 }
             };
             const sound = presets[name];
             if (!sound) return;
