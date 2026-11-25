@@ -47,7 +47,10 @@
   startButton.addEventListener("click", startJourney);
 
   function continueJourney() {
-    if (localStorage.getItem("hcJyuisUnlocked") !== "1" || typeof window.startJyuisWorld !== "function") return;
+    if (typeof window.startJyuisWorld !== "function") {
+      console.error("Jyuis World is not ready yet.");
+      return;
+    }
     if (journeyStarted) return;
     journeyStarted = true;
     hidePanel();
@@ -59,11 +62,11 @@
   }
 
   if (continueButton) {
-    const jyuisUnlocked = localStorage.getItem("hcJyuisUnlocked") === "1";
-    continueButton.disabled = !jyuisUnlocked;
-    continueButton.title = jyuisUnlocked ? "Continue to the Jyuis World" : "Complete the Death Snow to unlock Continue";
+    // Continue is a direct shortcut into World III from the main menu.
+    continueButton.disabled = false;
+    continueButton.title = "Continue to the Jyuis World";
     const status = continueButton.querySelector("small");
-    if (status) status.textContent = jyuisUnlocked ? "WORLD III UNLOCKED" : "COMING SOON";
+    if (status) status.textContent = "THE JYUIS WORLD";
     continueButton.addEventListener("click", continueJourney);
   }
 
