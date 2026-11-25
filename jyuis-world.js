@@ -87,7 +87,8 @@ function initPlatforms(){
     {x:2960,y:420,width:750,height:18,bridge:true,crumble:0,broken:false},
     {x:3820,y:420,width:790,height:18,bridge:true,crumble:0,broken:false},
     {x:4710,y:420,width:800,height:18,bridge:true,crumble:0,broken:false},
-    {x:5620,y:420,width:1050,height:18,bridge:true,crumble:0,broken:false}
+    {x:0,y:420,width:900,height:18,bridge:true,crumble:0,broken:false},
+    {x:5620,y:420,width:1300,height:18,bridge:true,crumble:0,broken:false}
   );
 }
 function initPickups(){
@@ -107,7 +108,7 @@ function startWorld(){
   state.massiveSword=state.magnet=state.fastRun=state.shield=0;
   state.poisonTicks=0;state.poisonTimer=0;state.finalUnlocked=false;
   initEnemies();initPlatforms();initPickups();
-  deathSnowState.active=false;
+  deathSnowState.active=false;deathSnowState.victory=false;
   worldTwoState.phase=5;
   LEVEL.end=JYUIS.end;ground.width=JYUIS.end;ground.y=760;
   player.x=120;player.y=JYUIS.bridgeY-player.height;
@@ -175,7 +176,7 @@ function updatePlayerJyuis(){
     if(state.boss&&state.area==="boss"&&overlap(hit,state.boss)){state.boss.health-=state.massiveSword>0?80:24;}
   }
   if(!player.isAttacking)player._jyuisHitApplied=false;
-  if(state.area==="bridges"){
+  if(state.area!=="boss"){
     for(const e of state.enemies){
       if(e.dead)continue;
       if(overlap(player,e)&&player.y+player.height<e.y+e.height*.55){
@@ -277,7 +278,7 @@ function updateJyuis(){
   if(state.area==="boss")updateBoss();
   if(state.area==="bridges"&&player.x>JYUIS.bridgeEnd-180){
     const alive=state.enemies.some(e=>!e.dead);
-    if(!alive){state.area="secret";state.enemies=[makeEnemy("skeleton",JYUIS.secretStart+480,279),makeEnemy("poison",JYUIS.secretStart+1120,324)];state.enemies[0].secret=true;state.enemies[1].secret=true;player.x=JYUIS.secretStart+160;player.y=400-player.height;player.velocityY=0;notify("SECRET WORLD — THE POISON DEPTHS");}
+    if(!alive){state.area="secret";state.enemies=[makeEnemy("skeleton",JYUIS.secretStart+480,279),makeEnemy("poison",JYUIS.secretStart+1260,208)];state.enemies[0].secret=true;state.enemies[1].secret=true;player.x=JYUIS.secretStart+160;player.y=400-player.height;player.velocityY=0;notify("SECRET WORLD — THE POISON DEPTHS");}
   }
   if(state.area==="secret"&&player.x>JYUIS.secretEnd-170){
     if(state.enemies.some(e=>!e.dead)){player.x=JYUIS.secretEnd-220;notify("DEFEAT THE DEPTH GUARDIANS FIRST");}
@@ -338,7 +339,7 @@ function drawGroundJyuis(){
   for(let x=0;x<JYUIS.end;x+=54){ctx.fillRect(x+Math.sin(x)*8,JYUIS.poisonY+8,22,4);}
 }
 function drawPlatformsJyuis(){
-  const visible=(state.area==="bridges"?state.platforms.filter(p=>p.bridge):state.platforms.filter(p=>p.secret));
+  const visible=(state.area==="bridges"?state.platforms.filter(p=>!p.secret):state.platforms.filter(p=>p.secret));
   for(const p of visible){
     if(p.broken)continue;
     ctx.fillStyle=p.bridge?"#37313d":"#4b4654";ctx.fillRect(p.x,p.y,p.width,p.height);
@@ -406,7 +407,7 @@ function drawNotificationJyuis(){
 }
 function drawJyuisWorld(){
   if(!state.active)return;
-  drawHazards();drawPlatformsJyuis();drawPickups();
+  drawHazards();drawPickups();
   for(const e of state.enemies)drawEnemyJyuis(e);
   if(state.area==="boss")drawBoss();
   drawHUD();drawNotificationJyuis();
@@ -444,7 +445,7 @@ drawLevelComplete=function(){
     ctx.fillText("THE END",WIDTH/2,HEIGHT/2+55);
     return;
   }
-  if(!state.active&&deathSnowState.victory){
+  if(!state.active&&deathSnowState.victory&&!player.gameOver){
     ctx.fillStyle="rgba(8,7,13,.92)";ctx.fillRect(0,0,WIDTH,HEIGHT);
     ctx.textAlign="center";ctx.fillStyle="#e4c4d8";ctx.font="40px Georgia";ctx.fillText("THANK YOU",WIDTH/2,HEIGHT/2-90);
     ctx.fillStyle="#f0e8ed";ctx.font="22px Georgia";ctx.fillText("THE DEATH SNOW HAS BEEN CONQUERED",WIDTH/2,HEIGHT/2-42);
