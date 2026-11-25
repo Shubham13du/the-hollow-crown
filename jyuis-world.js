@@ -179,9 +179,9 @@ function updatePlayerJyuis(){
   if(state.area!=="boss"){
     for(const e of state.enemies){
       if(e.dead)continue;
-      if(overlap(player,e)&&player.y+player.height<e.y+e.height*.55){
-        if(player.velocityX>0)player.x=e.x-player.width;
-        else if(player.velocityX<0)player.x=e.x+e.width;
+      if(overlap(player,e)){
+        if(player.x+player.width/2<e.x+e.width/2)player.x=e.x-player.width;
+        else player.x=e.x+e.width;
       }
     }
   }
