@@ -146,7 +146,7 @@ function updatePlayerJyuis(){
     player.y=floorY-player.height;player.velocityY=0;player.grounded=true;
   } else if(state.area!=="boss"){
     for(const p of [...state.platforms,...state.moving]){
-      if(state.area==="bridges"&&!p.bridge)continue;if(state.area==="secret"&&!p.secret)continue;
+      if(state.area==="bridges"&&p.secret)continue;if(state.area==="secret"&&!p.secret)continue;
       if(p.broken)continue;
       if(player.velocityY>=0&&prevY+player.height<=p.y+4&&player.y+player.height>=p.y&&player.x+player.width>p.x&&player.x<p.x+p.width){
         player.y=p.y-player.height;player.velocityY=0;player.grounded=true;
@@ -432,6 +432,8 @@ const baseUpdateMovingPlatforms=updateMovingPlatforms;
 updateMovingPlatforms=function(){if(!state.active){baseUpdateMovingPlatforms();return;}for(const p of state.moving){p.oldX=p.x;p.x+=p.speed*p.dir;if(p.x<p.min||p.x>p.max)p.dir*=-1;p.dx=p.x-p.oldX;}};
 const baseCheckSwordHit=checkSwordHit;
 checkSwordHit=function(){if(!state.active)baseCheckSwordHit();};
+const baseDrawLevelProgress=drawLevelProgress;
+drawLevelProgress=function(){if(!state.active){baseDrawLevelProgress();return;}ctx.save();ctx.setTransform(1,0,0,1,0,0);ctx.fillStyle="rgba(20,15,25,.8)";ctx.fillRect(WIDTH-190,18,170,8);ctx.fillStyle="#c66c91";ctx.fillRect(WIDTH-190,18,170*clamp(player.x/JYUIS.end,0,1),8);ctx.fillStyle="#f0e2e8";ctx.font="11px Georgia";ctx.textAlign="right";ctx.fillText(state.area==="boss"?"NECROMANCER":"THE JYUIS WORLD",WIDTH-20,14);ctx.restore();};
 const baseDrawLevelComplete=drawLevelComplete;
 drawLevelComplete=function(){
   if(state.active&&player.levelComplete&&state.finalUnlocked){
