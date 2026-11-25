@@ -192,10 +192,16 @@ function updatePlayerJyuis(){
 function poisonContact(amount,ticks){
   if(state.poisonTicks<=0){state.poisonTicks=ticks;state.poisonTimer=0;state.poisonDamage=amount;notify("POISONED — MOVE TO SAFE GROUND");}
 }
+function applyPeriodicDamage(amount){
+  if(player.gameOver||player.levelComplete)return;
+  player.health=Math.max(0,player.health-amount);
+  player.damageAnimationTimer=22;player.isAttacking=false;
+  if(player.health<=0){player.health=0;player.gameOver=true;}
+}
 function advancePoison(){
   if(state.poisonTicks<=0)return;
   state.poisonTimer++;
-  if(state.poisonTimer>=18){state.poisonTimer=0;state.poisonTicks--;if(state.shield<=0)damagePlayer(state.poisonDamage||3);}
+  if(state.poisonTimer>=18){state.poisonTimer=0;state.poisonTicks--;if(state.shield<=0)applyPeriodicDamage(state.poisonDamage||3);}
 }
 function updateEnemiesJyuis(){
   for(const e of state.enemies){
@@ -262,8 +268,8 @@ function updateBoss(){
     if(state.bossCircle.timer>0)state.bossCircle.timer--;
     else if(!b.transformed)state.bossCircle.active=false;
     const c=state.bossCircle;
-    const inside=Math.abs((player.x+player.width/2)-c.x)<c.radius;
-    if(inside&&state.shield<=0){c.damageTick++;if(c.damageTick>=30){c.damageTick=0;damagePlayer(10);}}
+    const inside=Math.abs((player.x+player.width/2)-c.x)<c.radius&&player.y+player.height>=438;
+    if(inside&&state.shield<=0){c.damageTick++;if(c.damageTick>=30){c.damageTick=0;applyPeriodicDamage(10);}}
     else c.damageTick=0;
   }
   if(b.health<=0){state.boss=null;player.levelComplete=true;state.finalUnlocked=true;notify("THE NECROMANCER HAS FALLEN");}
