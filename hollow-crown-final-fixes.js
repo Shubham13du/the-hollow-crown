@@ -157,13 +157,15 @@
     #hcFinalEnding .hc-keeper { margin: 22px 0; color: #eee5d6; font: italic clamp(17px, 2.6vw, 24px) Georgia, serif; }
     #hcFinalEnding .hc-the-end { margin: 25px 0 14px; color: #c7a66a; font: 15px Cinzel, Georgia, serif; letter-spacing: .35em; }
     #hcFinalEnding .hc-thanks { max-width: 560px; margin: 0 auto 32px; color: #aaa39a; font: 14px/1.8 Georgia, serif; }
-    #hcPlayAgain {
+    .hc-ending-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 14px; }
+    #hcContinue, #hcPlayAgain {
       min-width: 190px; padding: 14px 28px; border: 1px solid #c7a66a;
       background: linear-gradient(110deg, rgba(130,99,53,.35), rgba(35,30,27,.8));
       color: #f0dfbb; font: 12px Cinzel, Georgia, serif; letter-spacing: .24em;
       cursor: pointer; transition: .2s ease;
     }
-    #hcPlayAgain:hover { background: rgba(160,125,74,.3); border-color: #f0d49a; transform: translateY(-2px); }
+    #hcContinue { min-width: 190px; padding: 14px 28px; border: 1px solid #9c78a6; background: linear-gradient(110deg, rgba(103,68,119,.42), rgba(35,30,40,.8)); color: #f1e1f4; font: 12px Cinzel, Georgia, serif; letter-spacing: .24em; cursor: pointer; transition: .2s ease; }
+    #hcContinue:hover, #hcPlayAgain:hover { background: rgba(160,125,74,.3); border-color: #f0d49a; transform: translateY(-2px); }
     @keyframes hcEndingRise { from { opacity: 0; transform: translateY(18px); } to { opacity: 1; transform: translateY(0); } }
     @media (max-width: 520px) { #hcFinalEnding .hc-thanks { font-size: 13px; } }
   `;
@@ -176,13 +178,27 @@
     <div class="hc-ending-inner">
       <h1>THE HOLLOW CROWN</h1>
       <div class="hc-ending-rule"></div>
-      <p class="hc-keeper">the throne has found its keeper.</p>
-      <p class="hc-the-end">THE END</p>
-      <p class="hc-thanks">Thanks for playing the pre release version<br>stay tuned for the final one!!</p>
-      <button id="hcPlayAgain" type="button">PLAY AGAIN</button>
+      <p class="hc-keeper">the Death Snow has been conquered.</p>
+      <p class="hc-the-end">THANK YOU</p>
+      <p class="hc-thanks">The journey is not over. A forgotten realm waits beyond the poison bridges.</p>
+      <div class="hc-ending-actions">
+        <button id="hcContinue" type="button">CONTINUE</button>
+        <button id="hcPlayAgain" type="button">PLAY AGAIN</button>
+      </div>
     </div>
   `;
   document.body.appendChild(endingOverlay);
+
+  const continueButton = endingOverlay.querySelector("#hcContinue");
+  continueButton.addEventListener("click", () => {
+    endingOverlay.classList.remove("hc-visible");
+    if (typeof window.startJyuisWorld === "function") {
+      window.startJyuisWorld();
+    } else {
+      console.error("Jyuis World has not loaded; Continue could not start it.");
+      endingOverlay.classList.add("hc-visible");
+    }
+  });
 
   const playAgainButton = endingOverlay.querySelector("#hcPlayAgain");
   playAgainButton.addEventListener("click", () => {
