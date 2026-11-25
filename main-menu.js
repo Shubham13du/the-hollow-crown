@@ -3,6 +3,7 @@
 
   const menu = document.getElementById("mainMenu");
   const startButton = document.getElementById("startJourneyButton");
+  const continueButton = document.getElementById("continueJourneyButton");
   const settingsButton = document.getElementById("settingsButton");
   const creditsButton = document.getElementById("creditsButton");
   const infoPanel = document.getElementById("menuInfoPanel");
@@ -44,6 +45,27 @@
 }
 
   startButton.addEventListener("click", startJourney);
+
+  function continueJourney() {
+    if (localStorage.getItem("hcJyuisUnlocked") !== "1" || typeof window.startJyuisWorld !== "function") return;
+    if (journeyStarted) return;
+    journeyStarted = true;
+    hidePanel();
+    HC_AUDIO.play("exploration");
+    if (typeof HC_AUDIO.unlockSfx === "function") HC_AUDIO.unlockSfx();
+    document.body.classList.add("game-started");
+    menu.classList.add("menu-hidden");
+    window.startJyuisWorld();
+  }
+
+  if (continueButton) {
+    const jyuisUnlocked = localStorage.getItem("hcJyuisUnlocked") === "1";
+    continueButton.disabled = !jyuisUnlocked;
+    continueButton.title = jyuisUnlocked ? "Continue to the Jyuis World" : "Complete the Death Snow to unlock Continue";
+    const status = continueButton.querySelector("small");
+    if (status) status.textContent = jyuisUnlocked ? "WORLD III UNLOCKED" : "COMING SOON";
+    continueButton.addEventListener("click", continueJourney);
+  }
 
   settingsButton.addEventListener("click", () => {
     showPanel(
