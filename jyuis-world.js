@@ -6,7 +6,7 @@
 "use strict";
 
 const JYUIS = {
-  start: 0, bridgeEnd: 6900, secretStart: 7300, secretEnd: 9300,
+  start: 0, bridgeEnd: 6900, secretStart: 7300, secretEnd: 9180,
   bossStart: 9600, end: 10800, bridgeY: 420, poisonY: 520
 };
 const state = {
@@ -63,7 +63,8 @@ function initPlatforms(){
     {x:8000,y:285,width:150,height:15,secret:true},
     {x:8270,y:345,width:155,height:15,secret:true},
     {x:8550,y:270,width:165,height:15,secret:true},
-    {x:8840,y:330,width:160,height:15,secret:true}
+    {x:8840,y:330,width:160,height:15,secret:true},
+    {x:9000,y:360,width:230,height:15,secret:true}
   ];
   state.moving=[
     {x:7900,y:390,width:145,height:15,min:7820,max:8050,speed:1.05,dir:1,secret:true},
@@ -145,7 +146,7 @@ function updatePlayerJyuis(){
     player.y=floorY-player.height;player.velocityY=0;player.grounded=true;
   } else if(state.area!=="boss"){
     for(const p of [...state.platforms,...state.moving]){
-      if(p.secret!==(state.area==="secret")&&p.bridge!==(state.area==="bridges"))continue;
+      if(state.area==="bridges"&&!p.bridge)continue;if(state.area==="secret"&&!p.secret)continue;
       if(p.broken)continue;
       if(player.velocityY>=0&&prevY+player.height<=p.y+4&&player.y+player.height>=p.y&&player.x+player.width>p.x&&player.x<p.x+p.width){
         player.y=p.y-player.height;player.velocityY=0;player.grounded=true;
@@ -163,6 +164,7 @@ function updatePlayerJyuis(){
   if(state.area==="bridges"){
     for(const h of state.hazards)if(h.kind==="poison"&&overlap(player,h))poisonContact(3,5);
   }
+  advancePoison();
   if(player.x>state.checkpoint+620&&player.grounded){state.checkpoint=Math.floor(player.x/650)*650;player.checkpointX=state.checkpoint;}
   if(player.isAttacking&&!state.attackWasActive)state.attackWasActive=false;
   if(player.isAttacking&&!player._jyuisHitApplied){
@@ -184,14 +186,15 @@ function updatePlayerJyuis(){
   }
   setAnimation(playerAnimation,player.isAttacking?"attack":!player.grounded?(player.velocityY<0?"jump":"fall"):Math.abs(player.velocityX)>0?"walk":"idle");
   advanceAnimation(playerAnimation,PLAYER_ANIMATIONS);
+  if(playerAnimation.finished&&playerAnimation.current==="attack")player.isAttacking=false;
 }
 function poisonContact(amount,ticks){
-  if(state.poisonTicks<=0){state.poisonTicks=ticks;state.poisonTimer=0;notify("POISONED — MOVE TO SAFE GROUND");}
+  if(state.poisonTicks<=0){state.poisonTicks=ticks;state.poisonTimer=0;state.poisonDamage=amount;notify("POISONED — MOVE TO SAFE GROUND");}
+}
+function advancePoison(){
+  if(state.poisonTicks<=0)return;
   state.poisonTimer++;
-  if(state.poisonTimer>=18&&state.poisonTicks>0){
-    state.poisonTimer=0;state.poisonTicks--;
-    if(state.shield<=0)damagePlayer(amount);
-  }
+  if(state.poisonTimer>=18){state.poisonTimer=0;state.poisonTicks--;if(state.shield<=0)damagePlayer(state.poisonDamage||3);}
 }
 function updateEnemiesJyuis(){
   for(const e of state.enemies){
@@ -274,13 +277,14 @@ function updateJyuis(){
   if(state.area==="boss")updateBoss();
   if(state.area==="bridges"&&player.x>JYUIS.bridgeEnd-180){
     const alive=state.enemies.some(e=>!e.dead);
-    if(!alive){state.area="secret";player.x=JYUIS.secretStart+30;player.y=390-player.height;player.velocityY=0;notify("SECRET WORLD — THE POISON DEPTHS");}
+    if(!alive){state.area="secret";state.enemies=[makeEnemy("skeleton",JYUIS.secretStart+480,279),makeEnemy("poison",JYUIS.secretStart+1120,324)];state.enemies[0].secret=true;state.enemies[1].secret=true;player.x=JYUIS.secretStart+160;player.y=400-player.height;player.velocityY=0;notify("SECRET WORLD — THE POISON DEPTHS");}
   }
   if(state.area==="secret"&&player.x>JYUIS.secretEnd-170){
-    state.area="boss";player.x=JYUIS.bossStart+80;player.y=460-player.height;player.velocityY=0;
-    state.boss={x:JYUIS.bossStart+640,y:235,width:118,height:180,health:620,maxHealth:620,
-      cooldown:100,tick:0,attackIndex:0,facing:-1,transformed:false};
-    state.bossCircle.active=false;notify("FINAL BOSS — THE NECROMANCER");
+    if(state.enemies.some(e=>!e.dead)){player.x=JYUIS.secretEnd-220;notify("DEFEAT THE DEPTH GUARDIANS FIRST");}
+    else {state.area="boss";player.x=JYUIS.bossStart+80;player.y=460-player.height;player.velocityY=0;
+      state.boss={x:JYUIS.bossStart+640,y:235,width:118,height:180,health:620,maxHealth:620,
+        cooldown:100,tick:0,attackIndex:0,facing:-1,transformed:false};
+      state.bossCircle.active=false;notify("FINAL BOSS — THE NECROMANCER");}
   }
   if(player.gameOver){state.active=false;}
 }
@@ -312,9 +316,8 @@ function drawBackgroundJyuis(){
   ctx.restore();
 }
 function drawEnvironmentJyuis(){
-  const left=camera.x-100;
-  for(let i=0;i<15;i++){
-    const x=left+i*150;
+  for(let i=0;i<Math.ceil(JYUIS.end/340);i++){
+    const x=i*340;
     const h=115+(i*47%130);
     ctx.fillStyle=i%2?"#373343":"#292733";
     ctx.fillRect(x,420-h,18,h);
@@ -382,13 +385,14 @@ function drawBoss(){
     ctx.fillStyle=p.kind==="fire"?"#ef713f":p.kind==="poison"?"#80cf6b":"#d8bd78";
     ctx.beginPath();ctx.arc(p.x,p.y,p.kind==="ancient"?12:10,0,Math.PI*2);ctx.fill();
   }
+  ctx.save();ctx.setTransform(1,0,0,1,0,0);
   ctx.fillStyle="rgba(15,10,20,.85)";ctx.fillRect(WIDTH/2-190,24,380,18);
   ctx.fillStyle="#a74768";ctx.fillRect(WIDTH/2-187,27,374*clamp(b.health/b.maxHealth,0,1),12);
   ctx.strokeStyle="#ead9d0";ctx.strokeRect(WIDTH/2-190,24,380,18);
-  ctx.fillStyle="#f1e7df";ctx.font="bold 14px Georgia";ctx.textAlign="center";ctx.fillText("THE NECROMANCER",WIDTH/2,17);
+  ctx.fillStyle="#f1e7df";ctx.font="bold 14px Georgia";ctx.textAlign="center";ctx.fillText("THE NECROMANCER",WIDTH/2,17);ctx.restore();
 }
 function drawHUD(){
-  ctx.save();ctx.fillStyle="rgba(16,13,23,.82)";ctx.fillRect(16,16,220,58);
+  ctx.save();ctx.setTransform(1,0,0,1,0,0);ctx.fillStyle="rgba(16,13,23,.82)";ctx.fillRect(16,16,220,58);
   ctx.fillStyle="#eee1e5";ctx.font="12px Georgia";ctx.textAlign="left";
   ctx.fillText(state.area==="bridges"?"THE POISON BRIDGES":state.area==="secret"?"THE POISON DEPTHS":"THE FINAL RITUAL",28,34);
   ctx.fillText("ZOMBIE COINS: "+state.coinCount,28,55);
@@ -397,7 +401,7 @@ function drawHUD(){
 }
 function drawNotificationJyuis(){
   if(state.notificationTimer<=0)return;
-  ctx.save();ctx.textAlign="center";ctx.fillStyle="rgba(14,10,20,.82)";ctx.fillRect(WIDTH/2-190,HEIGHT-92,380,34);
+  ctx.save();ctx.setTransform(1,0,0,1,0,0);ctx.textAlign="center";ctx.fillStyle="rgba(14,10,20,.82)";ctx.fillRect(WIDTH/2-190,HEIGHT-92,380,34);
   ctx.fillStyle="#f0dce6";ctx.font="14px Georgia";ctx.fillText(state.notification,WIDTH/2,HEIGHT-70);ctx.restore();
 }
 function drawJyuisWorld(){
