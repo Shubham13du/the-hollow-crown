@@ -235,7 +235,7 @@ function updatePickupsJyuis(){
 function updateBoss(){
   const b=state.boss;if(!b)return;
   b.tick++;b.cooldown--;
-  if(!b.transformed&&b.health<=b.maxHealth*.5){b.transformed=true;b.width=190;b.height=225;state.bossCircle.active=true;notify("THE NECROMANCER AWAKENS");}
+  if(!b.transformed&&b.health<=b.maxHealth*.5){b.transformed=true;b.width=190;b.height=225;state.bossCircle.active=true;state.bossCircle.x=b.x+b.width/2;notify("THE NECROMANCER AWAKENS");}
   const dx=player.x-b.x;b.facing=dx<0?-1:1;
   if(b.cooldown<=0){
     const choice=(b.attackIndex++)%4;b.cooldown=b.transformed?95:135;
