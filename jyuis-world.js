@@ -214,7 +214,6 @@ function updateEnemiesJyuis(){
   }
   state.enemies=state.enemies.filter(e=>!e.dead||e.deadTimer<34);
   state.hazards=state.hazards.filter(h=>h.life===undefined||--h.life>0);
-  for(const p of state.moving){p.x+=p.speed*p.dir;if(p.x<p.min||p.x>p.max)p.dir*=-1;p.dx=p.x-p.oldX||0;p.oldX=p.x;}
 }
 function updatePickupsJyuis(){
   for(const c of state.coins){
@@ -411,7 +410,7 @@ function drawJyuisWorld(){
   for(const e of state.enemies)drawEnemyJyuis(e);
   if(state.area==="boss")drawBoss();
   drawHUD();drawNotificationJyuis();
-  if(state.transition>0){ctx.save();ctx.fillStyle="rgba(15,10,20,"+Math.min(.9,state.transition/130)+")";ctx.fillRect(0,0,WIDTH,HEIGHT);ctx.textAlign="center";ctx.fillStyle="#f0e2e8";ctx.font="bold 30px Georgia";ctx.fillText("THE JYUIS WORLD",WIDTH/2,HEIGHT/2);ctx.restore();}
+  if(state.transition>0){ctx.save();ctx.setTransform(1,0,0,1,0,0);ctx.fillStyle="rgba(15,10,20,"+Math.min(.9,state.transition/130)+")";ctx.fillRect(0,0,WIDTH,HEIGHT);ctx.textAlign="center";ctx.fillStyle="#f0e2e8";ctx.font="bold 30px Georgia";ctx.fillText("THE JYUIS WORLD",WIDTH/2,HEIGHT/2);ctx.restore();}
 }
 
 // Hook only while this world is active.
@@ -477,7 +476,7 @@ canvas.addEventListener("click",event=>{
   }
 });
 const baseRestartGame=restartGame;
-restartGame=function(){state.active=false;state.boss=null;state.enemies=[];state.projectiles=[];baseRestartGame();};
+restartGame=function(){state.active=false;state.boss=null;state.enemies=[];state.projectiles=[];LEVEL.end=WORLD_WIDTH;ground.width=WORLD_WIDTH;ground.y=LEVEL.groundY;baseRestartGame();};
 console.log("THE HOLLOW CROWN — THE JYUIS WORLD LOADED");
 window.jyuisWorldState=state;
 })();
