@@ -1,5 +1,5 @@
 // ============================================================================
-// THE HOLLOW CROWN — WORLD IV: THE JYUIS WORLD
+// THE HOLLOW CROWN — WORLD III: THE JYUIS WORLD
 // Loaded after death_snow.js. Isolated hooks; existing worlds remain intact.
 // ============================================================================
 (() => {
@@ -45,8 +45,8 @@ function makeEnemy(kind,x,y,mini=false){
 function initEnemies(){
   state.enemies=[
     makeEnemy("skeleton",650,354),makeEnemy("poison",1390,358),
-    makeEnemy("skeleton",2220,354,true),makeEnemy("skeleton",3150,354),
-    makeEnemy("poison",3910,358),makeEnemy("poison",5100,358,true),
+    makeEnemy("skeleton",2220,311,true),makeEnemy("skeleton",3150,354),
+    makeEnemy("poison",3910,358),makeEnemy("poison",5100,318,true),
     makeEnemy("skeleton",5840,354)
   ];
   state.enemies[2].name="THE IRON REMNANT";
@@ -170,9 +170,9 @@ function updatePlayerJyuis(){
   if(player.isAttacking&&!state.attackWasActive)state.attackWasActive=false;
   if(player.isAttacking&&!player._jyuisHitApplied){
     player._jyuisHitApplied=true;
-    const range=state.massiveSword>0?145:88;
+    const range=state.massiveSword>0?190:88;
     const hit={x:player.facing>0?player.x+player.width:player.x-range,y:player.y-12,width:range,height:player.height+24};
-    for(const e of state.enemies)if(!e.dead&&overlap(hit,e)){e.health-=state.massiveSword>0?125:35;if(e.health<=0){e.dead=true;e.deadTimer=0;}}
+    for(const e of state.enemies)if(!e.dead&&overlap(hit,e)){e.health-=state.massiveSword>0?220:35;if(e.health<=0){e.dead=true;e.deadTimer=0;}}
     if(state.boss&&state.area==="boss"&&overlap(hit,state.boss)){state.boss.health-=state.massiveSword>0?80:24;}
   }
   if(!player.isAttacking)player._jyuisHitApplied=false;
@@ -235,7 +235,7 @@ function updatePickupsJyuis(){
 function updateBoss(){
   const b=state.boss;if(!b)return;
   b.tick++;b.cooldown--;
-  if(!b.transformed&&b.health<=b.maxHealth*.5){b.transformed=true;b.width=190;b.height=225;state.bossCircle.active=true;state.bossCircle.x=b.x+b.width/2;notify("THE NECROMANCER AWAKENS");}
+  if(!b.transformed&&b.health<=b.maxHealth*.5){b.transformed=true;b.width=190;b.height=225;b.y=235;state.bossCircle.active=true;state.bossCircle.x=b.x+b.width/2;notify("THE NECROMANCER AWAKENS");}
   const dx=player.x-b.x;b.facing=dx<0?-1:1;
   if(b.cooldown<=0){
     const choice=(b.attackIndex++)%4;b.cooldown=b.transformed?95:135;
@@ -283,7 +283,7 @@ function updateJyuis(){
   if(state.area==="secret"&&player.x>JYUIS.secretEnd-170){
     if(state.enemies.some(e=>!e.dead)){player.x=JYUIS.secretEnd-220;notify("DEFEAT THE DEPTH GUARDIANS FIRST");}
     else {state.area="boss";player.x=JYUIS.bossStart+80;player.y=460-player.height;player.velocityY=0;
-      state.boss={x:JYUIS.bossStart+640,y:235,width:118,height:180,health:620,maxHealth:620,
+      state.boss={x:JYUIS.bossStart+640,y:280,width:118,height:180,health:620,maxHealth:620,
         cooldown:100,tick:0,attackIndex:0,facing:-1,transformed:false};
       state.bossCircle.active=false;notify("FINAL BOSS — THE NECROMANCER");}
   }
@@ -443,6 +443,7 @@ drawLevelComplete=function(){
     ctx.fillStyle="#f0e6e9";ctx.font="21px Georgia";ctx.fillText("THE JYUIS WORLD IS FREE",WIDTH/2,HEIGHT/2-18);
     ctx.fillStyle="#d6c5d0";ctx.font="15px Georgia";ctx.fillText("Zombie Coins Collected: "+state.coinCount,WIDTH/2,HEIGHT/2+20);
     ctx.fillText("THE END",WIDTH/2,HEIGHT/2+55);
+    drawCanvasButton("PLAY AGAIN",WIDTH/2-62,HEIGHT/2+88,124,42);
     return;
   }
   if(!state.active&&deathSnowState.victory&&!player.gameOver){
@@ -462,7 +463,11 @@ function drawCanvasButton(label,x,y,w,h){
   ctx.fillStyle="#fff0f6";ctx.font="bold 13px Georgia";ctx.textAlign="center";ctx.fillText(label,x+w/2,y+h/2+5);
 }
 canvas.addEventListener("click",event=>{
-  if(state.active&&player.levelComplete&&state.finalUnlocked){restartGame();return;}
+  if(state.active&&player.levelComplete&&state.finalUnlocked){
+    const r=canvas.getBoundingClientRect(),fx=(event.clientX-r.left)*WIDTH/r.width,fy=(event.clientY-r.top)*HEIGHT/r.height;
+    if(fx>=WIDTH/2-62&&fx<=WIDTH/2+62&&fy>=HEIGHT/2+88&&fy<=HEIGHT/2+130)restartGame();
+    return;
+  }
   if(state.active||!deathSnowState.victory)return;
   const r=canvas.getBoundingClientRect(),x=(event.clientX-r.left)*WIDTH/r.width,y=(event.clientY-r.top)*HEIGHT/r.height;
   const cy=HEIGHT/2+45;
