@@ -218,6 +218,7 @@
     const won = !!(deathSnowState.victory && player.levelComplete);
     if (won !== endingVisible) {
       endingVisible = won;
+      if (won) localStorage.setItem("hcJyuisUnlocked", "1");
       endingOverlay.classList.toggle("hc-visible", won);
     }
     requestAnimationFrame(syncFinalEnding);
