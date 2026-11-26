@@ -46,28 +46,11 @@
 
   startButton.addEventListener("click", startJourney);
 
-  function continueJourney() {
-    if (typeof window.startJyuisWorld !== "function") {
-      console.error("Jyuis World is not ready yet.");
-      return;
-    }
-    if (journeyStarted) return;
-    journeyStarted = true;
-    hidePanel();
-    HC_AUDIO.play("exploration");
-    if (typeof HC_AUDIO.unlockSfx === "function") HC_AUDIO.unlockSfx();
-    document.body.classList.add("game-started");
-    menu.classList.add("menu-hidden");
-    window.startJyuisWorld();
-  }
-
   if (continueButton) {
-    // Continue is a direct shortcut into World III from the main menu.
-    continueButton.disabled = false;
-    continueButton.title = "Continue to the Jyuis World";
+    continueButton.disabled = true;
+    continueButton.title = "Continue is temporarily unavailable.";
     const status = continueButton.querySelector("small");
-    if (status) status.textContent = "THE JYUIS WORLD";
-    continueButton.addEventListener("click", continueJourney);
+    if (status) status.textContent = "COMING SOON";
   }
 
   settingsButton.addEventListener("click", () => {
