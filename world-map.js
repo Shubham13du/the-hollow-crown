@@ -46,7 +46,7 @@
     document.body.classList.add("game-started");
     const menu=document.getElementById("mainMenu");if(menu)menu.classList.add("menu-hidden");
     if(window.keys)for(const k in window.keys)window.keys[k]=false;
-    if(id===1){if(typeof window.restartGame==="function")window.restartGame();window.worldTwoState.phase=1;}
+    if(id===1){if(typeof window.restartGame==="function")window.restartGame();}
     if(id===2){if(typeof window.dsEnterWorld==="function")window.dsEnterWorld();else console.error("Death Snow entry is unavailable.");}
     if(id===3){if(typeof window.startJyuisWorld==="function")window.startJyuisWorld();else console.error("Jyuis World entry is unavailable.");}
   }
