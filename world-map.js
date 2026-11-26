@@ -58,6 +58,6 @@
     choice.querySelector("#hcChoiceMap").addEventListener("click",()=>{choice.classList.remove("hc-open");show();});
   }
   map.querySelectorAll("[data-world]").forEach(btn=>btn.addEventListener("click",()=>begin(Number(btn.dataset.world))));
-  map.querySelector("#hcMapBack").addEventListener("click",()=>{hide();const menu=document.getElementById("mainMenu");if(menu){menu.classList.remove("menu-hidden");document.body.classList.remove("game-started");}});
+  map.querySelector("#hcMapBack").addEventListener("click",()=>{hide();const menu=document.getElementById("mainMenu");if(menu){menu.classList.remove("menu-hidden");document.body.classList.remove("game-started");}window.dispatchEvent(new Event("hc-world-map-return"));});
   window.HC_WORLD_MAP={show,hide,showBossChoice,startWorld:begin};
 })();
