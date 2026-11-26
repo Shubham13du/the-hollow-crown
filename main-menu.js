@@ -39,6 +39,7 @@
   }
 
   startButton.addEventListener("click", startJourney);
+  window.addEventListener("hc-world-map-return", () => { journeyStarted = false; });
 
   if (continueButton) {
     continueButton.disabled = true;
