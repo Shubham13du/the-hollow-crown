@@ -32,17 +32,11 @@
     if (journeyStarted) return;
     journeyStarted = true;
     hidePanel();
-
     HC_AUDIO.play("exploration");
     if (typeof HC_AUDIO.unlockSfx === "function") HC_AUDIO.unlockSfx();
-
-    document.body.classList.add("game-started");
-    menu.classList.add("menu-hidden");
-
-    if (window.keys && typeof window.keys === "object") {
-      for (const key in window.keys) window.keys[key] = false;
-    }
-}
+    if (window.HC_WORLD_MAP) window.HC_WORLD_MAP.show();
+    else console.error("World map has not loaded.");
+  }
 
   startButton.addEventListener("click", startJourney);
 
