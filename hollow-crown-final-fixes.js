@@ -178,12 +178,12 @@
     <div class="hc-ending-inner">
       <h1>THE HOLLOW CROWN</h1>
       <div class="hc-ending-rule"></div>
-      <p class="hc-keeper">the Death Snow has been conquered.</p>
-      <p class="hc-the-end">THANK YOU</p>
-      <p class="hc-thanks">The journey is not over. A forgotten realm waits beyond the poison bridges.</p>
+      <p class="hc-keeper">The Death Snow has been conquered.</p>
+      <p class="hc-the-end">THE PATH FORWARD OPENS</p>
+      <p class="hc-thanks">A forgotten realm waits beyond the poison bridges.</p>
       <div class="hc-ending-actions">
         <button id="hcContinue" type="button">CONTINUE</button>
-        <button id="hcPlayAgain" type="button">PLAY AGAIN</button>
+        <button id="hcPlayAgain" type="button">MAP</button>
       </div>
     </div>
   `;
@@ -203,12 +203,8 @@
   const playAgainButton = endingOverlay.querySelector("#hcPlayAgain");
   playAgainButton.addEventListener("click", () => {
     endingOverlay.classList.remove("hc-visible");
-    restartGame();
-    player.gameOver = false;
-    player.levelComplete = false;
-    if (typeof HC_AUDIO !== "undefined" && HC_AUDIO && typeof HC_AUDIO.play === "function") {
-      HC_AUDIO.play("exploration");
-    }
+    if (window.HC_WORLD_MAP) window.HC_WORLD_MAP.show();
+    else restartGame();
   });
 
   // Keep the existing loop and draw order intact; poll victory from the
@@ -218,8 +214,19 @@
     const won = !!(deathSnowState.victory && player.levelComplete);
     if (won !== endingVisible) {
       endingVisible = won;
-      if (won) localStorage.setItem("hcJyuisUnlocked", "1");
-      endingOverlay.classList.toggle("hc-visible", won);
+      if (won) {
+        localStorage.setItem("hcJyuisUnlocked", "1");
+        if (window.HC_WORLD_MAP) {
+          endingOverlay.classList.remove("hc-visible");
+          window.HC_WORLD_MAP.showBossChoice({
+            title: "THE DEATH SNOW HAS BEEN CONQUERED",
+            subtitle: "The forgotten realm beyond the poison bridges awaits.",
+            continueLabel: "CONTINUE",
+            mapLabel: "MAP",
+            onContinue: () => { endingOverlay.classList.remove("hc-visible"); window.startJyuisWorld(); }
+          });
+        } else endingOverlay.classList.add("hc-visible");
+      } else endingOverlay.classList.remove("hc-visible");
     }
     requestAnimationFrame(syncFinalEnding);
   }
