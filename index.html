@@ -12,11 +12,7 @@
     <header class="game-header">
       <h1>THE HOLLOW CROWN</h1>
       <p>A KINGDOM FORGOTTEN</p>
-    </header>
-
-    <button id="deathSnowTestButton" type="button">TEST DEATH SNOW</button>
-
-    <canvas id="gameCanvas" width="960" height="540">
+    </header><canvas id="gameCanvas" width="960" height="540">
       Your browser does not support Canvas.
     </canvas>
     
@@ -96,43 +92,9 @@
 <script src="death_snow.js"></script>
 <script src="death-snow-gate-hotfix.js"></script>
 <script src="jyuis-world.js"></script>
+<script src="world-map.js"></script>
 <script src="mobile-controls.js"></script>
 <script src="audio-manager.js"></script>
 <script src="main-menu.js"></script>
-  <script src="hollow-crown-final-fixes.js"></script>
-
-  <script>
-    document.getElementById("deathSnowTestButton").addEventListener("click", function () {
-      dsResetWorld();
-
-      worldTwoState.phase = 4;
-      deathSnowState.active = true;
-      deathSnowState.entryTimer = 0;
-      deathSnowState.transition = 90;
-      deathSnowState.region = "mountains";
-
-      player.gameOver = false;
-      player.levelComplete = false;
-      player.x = DEATH_SNOW.start + 85;
-      player.y = ground.y - player.height;
-      player.velocityX = 0;
-      player.velocityY = 0;
-      player.grounded = true;
-      player.health = player.maxHealth;
-      player.checkpointX = DEATH_SNOW.start + 85;
-
-      deathSnowState.checkpoint = player.checkpointX;
-
-      camera.x = DEATH_SNOW.start;
-      camera.targetX = DEATH_SNOW.start;
-      enemies.length = 0;
-
-      dsCreatePotions();
-      dsSpawnWave(0);
-
-      showNotification("WORLD III — THE DEATH SNOW");
-    });
-  </script>
-
-</body>
+  <script src="hollow-crown-final-fixes.js"></script></body>
 </html>
