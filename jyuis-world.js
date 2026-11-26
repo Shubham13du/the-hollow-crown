@@ -448,7 +448,8 @@ drawLevelComplete=function(){
     ctx.fillStyle="#f0e6e9";ctx.font="21px Georgia";ctx.fillText("THE JYUIS WORLD IS FREE",WIDTH/2,HEIGHT/2-18);
     ctx.fillStyle="#d6c5d0";ctx.font="15px Georgia";ctx.fillText("Zombie Coins Collected: "+state.coinCount,WIDTH/2,HEIGHT/2+20);
     ctx.fillText("THE END",WIDTH/2,HEIGHT/2+55);
-    drawCanvasButton("PLAY AGAIN",WIDTH/2-62,HEIGHT/2+88,124,42);
+    drawCanvasButton("CONTINUE",WIDTH/2-145,HEIGHT/2+88,125,42);
+    drawCanvasButton("MAP",WIDTH/2+20,HEIGHT/2+88,125,42);
     return;
   }
   if(!state.active&&deathSnowState.victory&&!player.gameOver){
@@ -470,7 +471,7 @@ function drawCanvasButton(label,x,y,w,h){
 canvas.addEventListener("click",event=>{
   if(state.active&&player.levelComplete&&state.finalUnlocked){
     const r=canvas.getBoundingClientRect(),fx=(event.clientX-r.left)*WIDTH/r.width,fy=(event.clientY-r.top)*HEIGHT/r.height;
-    if(fx>=WIDTH/2-62&&fx<=WIDTH/2+62&&fy>=HEIGHT/2+88&&fy<=HEIGHT/2+130)restartGame();
+    if(fy>=HEIGHT/2+88&&fy<=HEIGHT/2+130&&window.HC_WORLD_MAP)window.HC_WORLD_MAP.show();
     return;
   }
   if(state.active||!deathSnowState.victory)return;
