@@ -432,14 +432,23 @@ function updateDeathSnowEntrance() {
     );
 
     // World III starts automatically after the throne cinematic.
-    // No extra portal interaction or CONTINUE/game-over screen is required.
-    if(throneJourneyComplete) {
+    // Wait for the player to choose CONTINUE or MAP after the Ashen Sovereign.
+    if(throneJourneyComplete && !window.__hcAshenChoiceShown) {
+        window.__hcAshenChoiceShown = true;
         deathSnowGate.unlocked = true;
-        dsEnterWorld();
         endingSequence.active = false;
         endingSequence.finished = false;
         endingSequence.timer = 0;
         keys.e = false;
+        if (window.HC_WORLD_MAP) {
+            window.HC_WORLD_MAP.showBossChoice({
+                title: "THE ASHEN SOVEREIGN HAS FALLEN",
+                subtitle: "The path to the Death Snow is open.",
+                continueLabel: "CONTINUE",
+                mapLabel: "MAP",
+                onContinue: () => { window.__hcAshenChoiceShown = false; dsEnterWorld(); }
+            });
+        }
     }
 }
 
@@ -2578,6 +2587,7 @@ window.DEATH_SNOW = DEATH_SNOW;
 window.deathSnowState = deathSnowState;
 
 window.dsResetWorld = dsResetWorld;
+window.dsEnterWorld = dsEnterWorld;
 window.dsCreatePotions = dsCreatePotions;
 window.dsSpawnWave = dsSpawnWave;
 window.dsSpawnBoss = dsSpawnBoss;
